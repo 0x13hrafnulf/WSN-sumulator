@@ -408,7 +408,7 @@ node_status = ones(n_nodes, 1);%1 is alive, 0 is dead
         Points = [cluster_heads(:,1:2); bs_x, bs_y];
         Dist = pdist2(Points, Points);
         Weights = Dist;
-        for i=1:n
+        for i=1:n+1
             for j=1:n+1
                 Etx = 0;
                 Erx = 0;
@@ -428,6 +428,7 @@ node_status = ones(n_nodes, 1);%1 is alive, 0 is dead
                 end
             end
         end
+        disp(Weights);
         
         for i = 1:n
             ch_x = cluster_heads(i,1);
@@ -452,6 +453,12 @@ node_status = ones(n_nodes, 1);%1 is alive, 0 is dead
         end     
 
         %Graph calculation
+        G = graph(Weights);
+        for i=1:n
+            [path, d] = shortestpath(G, n+1, i);
+            disp(path);
+            disp(d);
+        end
     end
 
     function calculate_paths(src, event)
@@ -466,6 +473,7 @@ node_status = ones(n_nodes, 1);%1 is alive, 0 is dead
         for i=1:n_clusters
            draw_circle(centroids(i,1), centroids(i,2), centroids(i, 3)); %(x, y, max_dist);
            scatter(ax1, nodes(labels == i, 1), nodes(labels == i, 2), 'o' , 'filled');
+           text(centroids(i,1)+area_x/100, centroids(i,2), num2str(i), 'Color', 'b','FontSize', 12, 'FontWeight', 'bold');
         end
         p = plot(ax1, bs_x, bs_y, 'bs',...
             'LineWidth',2,...
@@ -474,7 +482,7 @@ node_status = ones(n_nodes, 1);%1 is alive, 0 is dead
             'MarkerFaceColor', 'b');        
         scatter(ax1, centroids(:,1), centroids(:,2),100, 'b*', 'LineWidth', 2,...
             'MarkerEdgeColor','b',...
-            'MarkerFaceColor', 'b');
+            'MarkerFaceColor', 'b');        
         hold(ax1, 'off');      
     end
 
@@ -488,7 +496,7 @@ node_status = ones(n_nodes, 1);%1 is alive, 0 is dead
     function draw_cluster_lines(cluster_heads, n)
          hold(ax1, 'on');  
          for i = 1:n   
-             plot([cluster_heads(i,1), bs_x], [cluster_heads(i,2), bs_y], 'b');
+             plot([cluster_heads(i,1), bs_x], [cluster_heads(i,2), bs_y], 'b');          
              for j = 2:n
                  if(j > i) 
                      plot([cluster_heads(i,1), cluster_heads(j,1)], [cluster_heads(i,2), cluster_heads(j,2)],'b'); 
