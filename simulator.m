@@ -122,8 +122,8 @@ uicontrol('Parent', dbscan_panel, 'Style', 'pushbutton', 'String', 'Calculate', 
 %%%%%Panel Shortest path%%%%%
 uicontrol('Parent', algorithm_panel, 'Style', 'text', 'String', '2. Shortest-path', 'Units', 'Normalized', ...
         'FontWeight', 'bold' ,'FontSize' , 10,'Position', [0.3, 0.9, 0.3, 0.1]);
-path_method_chosen = uicontrol('Parent', algorithm_panel, 'Style', 'popupmenu', 'String', { 'Dijkstra', 'Bellman-Ford '}, 'Units', 'Normalized', ...
-        'FontWeight','bold','FontAngle','italic','FontSize' , 11,'Position', [0.35, 0.8, 0.3, 0.1], 'Callback', @path_chosen);
+path_method_chosen = uicontrol('Parent', algorithm_panel, 'Style', 'popupmenu', 'String', { 'Dijkstra', 'Bellman-Ford'}, 'Units', 'Normalized', ...
+        'FontWeight','bold','FontAngle','italic','FontSize' , 11,'Position', [0.35, 0.8, 0.3, 0.1]);
 path_panel = uipanel('Parent', algorithm_panel, 'Units', 'Normalized', ...
         'Position', [0.35, 0.0, 0.3, 0.75], 'Title', 'Parameters:', 'Visible', 'on', 'FontWeight', 'bold');
 energy_node_str = uicontrol('Parent', path_panel, 'Style', 'text', 'String', 'Node energy(J)', 'Units', 'Normalized', ...
@@ -201,10 +201,11 @@ filename_for_saving = [];
 output_matrix = [];
 labels = [];
 centroids = [];
-G_graph = [];
-clusterH = [];
+cluster_graph = [];
+CHs = [];
 total_energy = 0;
-
+total_energy_per_round = zeros(n_rounds,1);
+node_energy_per_round = zeros(n_nodes, n_rounds);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
     function set_bs(src, event)
@@ -242,7 +243,6 @@ total_energy = 0;
     function method_chosen(src, event)
         s_method = get(cluster_method_chosen, 'String');
         s_value = get(cluster_method_chosen, 'Value');
-        %cla(ax2,'reset');
         switch s_method{s_value}
             case 'DBSCAN'
                 set(dbscan_panel, 'Visible', 'on');
@@ -321,7 +321,7 @@ total_energy = 0;
         items = get(save_method_chosen1,'String');
         index_selected = get(save_method_chosen1,'Value');
         save_selected = items{index_selected};
-        switch save_selected,
+        switch save_selected
             case 'Both graphs'
                 fig = main_window;
                 fig.InvertHardcopy = 'off';
@@ -370,6 +370,7 @@ total_energy = 0;
             case 'K-Means'    
                  [labels, centroids] = get_k_means_result(nodes, number_of_clusters);
                  nodes = [nodes, labels];  
+                 CHs = zeros(number_of_clusters, 2);
                  draw(centroids, number_of_clusters);
             case 'GMM-clusters'     
                  labels, centroids = get_gmm_result(nodes, number_of_clusters);
@@ -431,7 +432,6 @@ total_energy = 0;
                 end
             end
         end
-        disp(Weights);
         
         for i = 1:n
             ch_x = cluster_heads(i,1);
@@ -456,17 +456,31 @@ total_energy = 0;
         end     
 
         %Graph calculation
-        G = graph(Weights);
+        cluster_graph = graph(Weights);
         for i=1:n
-            [path, d] = shortestpath(G, n+1, i);
+            [path, d] = shortestpath(cluster_graph, n+1, i);
             disp(path);
             disp(d);
         end
     end
 
     function calculate_paths(src, event)
+        method = get(path_method_chosen, 'String');
+        value = get(path_method_chosen, 'Value');
+        switch method{value} %check the method for drawing 
+            case 'Dijkstra'
+            case 'Bellman-Ford '    
+
+        end  
     end
+
     function simulate(src, event)
+        n_rounds = str2double(get(num_of_rounds_edit, 'String'));
+        
+        for i=n_rounds:-1:0  
+            num_of_rounds_edit.String =  num2str(i);
+            pause(1);
+        end
     end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%DRAWING%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
