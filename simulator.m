@@ -180,10 +180,15 @@ init_energy = str2double(get(energy_node_edit, 'String'));%2 or 0.5
 msg_body_size = 8 * str2double(get(msg_body_size_edit, 'String')); %lbody = 250 bytes, 2000 bits
 msg_header_size = 8 * str2double(get(msg_header_size_edit, 'String')); %lheader = 43 bytes, 344 bits
 
-nodes = zeros(n_nodes, 2);
+nodes = zeros(n_nodes, 7); %x, y, id, status, energy = 2j or 0.5j, energy_consumption, role (1 = ch, 0 = simple node)
 for i = 1:n_nodes
+    
     nodes(i,1) = rand(1,1)*area_x;	
     nodes(i,2) = rand(1,1)*area_y;
+    nodes(i,3) = i;
+    nodes(i,4) = 1;
+    nodes(i,5) = init_energy;
+    
 end
 hold(ax1, 'on');
 scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
@@ -199,9 +204,7 @@ centroids = [];
 G_graph = [];
 clusterH = [];
 total_energy = 0;
-node_energy = ones(n_nodes, 1) * init_energy;
-node_energy_consumption = [];
-node_status = ones(n_nodes, 1);%1 is alive, 0 is dead
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
     function set_bs(src, event)
@@ -417,7 +420,7 @@ node_status = ones(n_nodes, 1);%1 is alive, 0 is dead
                     if(d0 > Dist(i,j))
                         Etx = (msg_body_size + msg_header_size)*(Eelec+EDA) + (msg_body_size + msg_header_size)*Efs*Dist(i,j)^2;
                     elseif(d0 < Dist(i,j))
-                        Etx = (msg_body_size + msg_header_size)*(Eelec+EDA) + (msg_body_size + msg_header_size)*Efs*Dist(i,j)^4;
+                        Etx = (msg_body_size + msg_header_size)*(Eelec+EDA) + (msg_body_size + msg_header_size)*Emp*Dist(i,j)^4;
                     end
                     Erx = (msg_body_size + msg_header_size)*(Eelec);
                     Etotal = Etx + Erx;
@@ -513,7 +516,7 @@ node_status = ones(n_nodes, 1);%1 is alive, 0 is dead
             ch_y = cluster_heads(i,2);
             cluster = nodes(labels == i,1:2);
             number_of_points = size(cluster,1);
-            for j = 1:number_of_points
+            for j = 1:number_of_points     
                  plot([cluster(j,1), ch_x], [cluster(j,2), ch_y],'--k');
             end   
          end     
