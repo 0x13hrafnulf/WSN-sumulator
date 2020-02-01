@@ -180,18 +180,20 @@ init_energy = str2double(get(energy_node_edit, 'String'));%2 or 0.5
 msg_body_size = 8 * str2double(get(msg_body_size_edit, 'String')); %lbody = 250 bytes, 2000 bits
 msg_header_size = 8 * str2double(get(msg_header_size_edit, 'String')); %lheader = 43 bytes, 344 bits
 
-nodes = zeros(n_nodes, 7); %x, y, id, status, energy = 2j or 0.5j, energy_consumption, role (1 = ch, 0 = simple node)
+nodes = zeros(n_nodes, 9); %x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label
 for i = 1:n_nodes
     
     nodes(i,1) = rand(1,1)*area_x;	
     nodes(i,2) = rand(1,1)*area_y;
     nodes(i,3) = i;
-    nodes(i,4) = 1;
-    nodes(i,5) = init_energy;
-    
+    nodes(i,4) = 0;
+    nodes(i,5) = 1;
+    nodes(i,6) = init_energy;
 end
+disp(nodes);
+
 hold(ax1, 'on');
-scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
+node_handler = scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
 hold(ax1, 'off');
 
 movegui(main_window, 'center');
@@ -199,13 +201,16 @@ set(main_window, 'Visible', 'on');
 full_filename = [];
 filename_for_saving = [];
 output_matrix = [];
-labels = [];
 centroids = [];
 cluster_graph = [];
 CHs = [];
 total_energy = 0;
 total_energy_per_round = zeros(n_rounds,1);
 node_energy_per_round = zeros(n_nodes, n_rounds);
+handler_text = [];
+handler_CH_lines = [];
+handler_lines = [];
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
     function set_bs(src, event)
@@ -226,11 +231,16 @@ node_energy_per_round = zeros(n_nodes, n_rounds);
         hold(ax1, 'on');
         cla;
         n_nodes = str2double(get(num_of_nodes_edit, 'String'));
-        nodes = zeros(n_nodes, 2);
+        nodes = zeros(n_nodes, 9);
         for i = 1:n_nodes
             nodes(i,1) = rand(1,1)*area_x;	
             nodes(i,2) = rand(1,1)*area_y;
+            nodes(i,3) = i;
+            nodes(i,4) = 0;
+            nodes(i,5) = 1;
+            nodes(i,6) = init_energy;
         end
+        disp(nodes);
         p = plot(ax1, bs_x, bs_y, 'bs',...
             'LineWidth',2,...
             'MarkerSize',15,...
@@ -344,7 +354,7 @@ node_energy_per_round = zeros(n_nodes, n_rounds);
         
         msgbox({'Your graph was saved:'; graphName}, 'Success');
     end
-
+  h = 0;
     function calculate_clusters(src, event)
         method = get(cluster_method_chosen, 'String');
         value = get(cluster_method_chosen, 'Value');
@@ -366,12 +376,15 @@ node_energy_per_round = zeros(n_nodes, n_rounds);
                     data_sz = size(nodes, 1);
                     labels, centroids = get_dbscan_result(nodes, eps, number_of_neighbours, data_sz);
                     nodes = [nodes, labels];
+                    
                 end 
             case 'K-Means'    
                  [labels, centroids] = get_k_means_result(nodes, number_of_clusters);
-                 nodes = [nodes, labels];  
-                 CHs = zeros(number_of_clusters, 2);
+                 nodes(:,9) = labels;  
+                 disp(nodes);
+                 CHs = ones(number_of_clusters, 3);
                  draw(centroids, number_of_clusters);
+                 init_cluster_ids(number_of_clusters);
             case 'GMM-clusters'     
                  labels, centroids = get_gmm_result(nodes, number_of_clusters);
                  nodes = [nodes, labels];
@@ -385,15 +398,9 @@ node_energy_per_round = zeros(n_nodes, n_rounds);
         end
     end
     
-    
+ 
 
-    function calculate_weights(src, event)
-         number_of_clusters = get(cluster_num_edit, 'String');
-         number_of_clusters = str2double(number_of_clusters);
-         calculate_energy(centroids, number_of_clusters)
-         draw_cluster_lines(centroids, number_of_clusters);
-         draw_lines(centroids, number_of_clusters);
-         
+    function calculate_weights(src, event)   
     end
 
     function calculate_energy(cluster_heads, n)
@@ -465,20 +472,87 @@ node_energy_per_round = zeros(n_nodes, n_rounds);
     end
 
     function calculate_paths(src, event)
+
         method = get(path_method_chosen, 'String');
         value = get(path_method_chosen, 'Value');
         switch method{value} %check the method for drawing 
             case 'Dijkstra'
             case 'Bellman-Ford '    
 
-        end  
+        end
+
+    end
+
+    function init_cluster_ids(n)     
+        for i = 1:n
+            cluster = nodes(nodes(:,9) == i, 1:3);
+            number_of_points = size(cluster,1);
+            CHs(i,2) = number_of_points;    
+            for j = 1:number_of_points
+               nodes(cluster(j,3) == nodes(:,3) ,4) = j;         
+            end
+        end 
+    end
+
+    function init_CHs(n)
+        for i = 1:n
+            cluster = nodes(nodes(:,9) == i, 1:4);
+            number_of_points = CHs(i,2);
+            for j = 1:number_of_points
+                if(CHs(i,3) == cluster(j, 4))
+                    CHs(i,1) =  cluster(j, 3);
+                    nodes(cluster(j,3) == nodes(:,3), 8) = 1;   
+                else
+                    nodes(cluster(j,3) == nodes(:,3), 8) = 0;
+                end
+
+            end
+            if(CHs(i,3) < CHs(i,2)) 
+                CHs(i,3) = CHs(i,3) + 1;
+            else
+                CHs(i,2) = 1;
+            end
+        end
     end
 
     function simulate(src, event)
+%       Initialization step:
+% Create static clusters based on node information (clustering techniques)
+% Assign nodes to clusters
+% Maybe to create cluster in balanced way, equal number of nodes
+% Select cluster heads (indicate them)
+% Find shortest paths for centroids?
+% 		Simulation run:
+% Select cluster head in cluster based on: closest distance? Or node cluster id order? (indicate them), check if its alive
+% Calculate energy for nodes to cluster head, draw lines check if they alive
+% Add to total energy etc.
+% Calculate shortest path from cluster heads to base, draw lines
+% Add to total energy etc.
+% Msg is 4+6 (data + mac) from nodes or 4 + 1||4 (data + node id)
+% Aggregated data is msg*n <= 250 bytes, EDA energy consumption
+% Next CH has to send own data + received data, Etx*n transmits
+% Next round
+
         n_rounds = str2double(get(num_of_rounds_edit, 'String'));
+        number_of_clusters = get(cluster_num_edit, 'String');
+        number_of_clusters = str2double(number_of_clusters);      
         
         for i=n_rounds:-1:0  
-            num_of_rounds_edit.String =  num2str(i);
+            num_of_rounds_edit.String =  num2str(i);          
+            for i = 1:n
+                nodes(cluster_sizes(i,2) == nodes(:,4), 8) = 1;
+                cluster = nodes(nodes(:,9) == i,1:2);
+                nodes(cluster_sizes(i,2) == nodes(:,4), 8) = 1;
+                number_of_points = size(cluster,1);
+                calculate_energy(cluster, number_of_points);
+                draw_cluster_lines(cluster, number_of_points);
+                draw_lines(cluster, number_of_points);
+                if(cluster_sizes(i,2) < cluster_sizes(i,1)) 
+                    cluster_sizes(i,2) = cluster_sizes(i,2) + 1;
+                else
+                    cluster_sizes(i,2) = 1;
+                end
+            end    
             pause(1);
         end
     end
@@ -489,7 +563,7 @@ node_energy_per_round = zeros(n_nodes, n_rounds);
         hold(ax1, 'on');
         for i=1:n_clusters
            draw_circle(centroids(i,1), centroids(i,2), centroids(i, 3)); %(x, y, max_dist);
-           scatter(ax1, nodes(labels == i, 1), nodes(labels == i, 2), 'o' , 'filled');
+           scatter(ax1, nodes(nodes(:,9) == i, 1), nodes(nodes(:,9) == i, 2), 'o' , 'filled');
            text(centroids(i,1)+area_x/100, centroids(i,2), num2str(i), 'Color', 'b','FontSize', 12, 'FontWeight', 'bold');
         end
         p = plot(ax1, bs_x, bs_y, 'bs',...
@@ -528,7 +602,7 @@ node_energy_per_round = zeros(n_nodes, n_rounds);
          for i = 1:n
             ch_x = cluster_heads(i,1);
             ch_y = cluster_heads(i,2);
-            cluster = nodes(labels == i,1:2);
+            cluster = nodes(nodes(:,9) == i,1:2);
             number_of_points = size(cluster,1);
             for j = 1:number_of_points     
                  plot([cluster(j,1), ch_x], [cluster(j,2), ch_y],'--k');
