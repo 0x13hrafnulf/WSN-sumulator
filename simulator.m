@@ -138,10 +138,9 @@ msg_header_size_str = uicontrol('Parent', path_panel, 'Style', 'text', 'String',
         'FontWeight', 'bold' ,'FontSize' , 9,'Position', [0.0, 0.4, 0.7, 0.2], 'Visible', 'on');
 msg_header_size_edit = uicontrol('Parent', path_panel,'Style', 'edit', 'String', '43', 'Units', 'Normalized', ...
         'FontAngle','italic','FontSize' , 10,'Position', [0.7, 0.4, 0.2, 0.2], 'Visible', 'on');         
-uicontrol('Parent', path_panel, 'Style', 'pushbutton', 'String', 'Calculate Weights', 'Units', 'Normalized', ...
-        'Position', [0.1, 0.2, 0.8, 0.2], 'FontWeight', 'bold' ,'FontSize' , 10, 'Callback', @calculate_weights);    
-uicontrol('Parent', path_panel, 'Style', 'pushbutton', 'String', 'Calculate', 'Units', 'Normalized', ...
-        'Position', [0.1, 0.0, 0.8, 0.2], 'FontWeight', 'bold' ,'FontSize' , 10, 'Callback', @calculate_paths);
+  
+uicontrol('Parent', path_panel, 'Style', 'pushbutton', 'String', 'Reset statistics', 'Units', 'Normalized', ...
+        'Position', [0.1, 0.0, 0.8, 0.2], 'FontWeight', 'bold' ,'FontSize' , 10, 'Callback', @reset_stats);
 
     
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Init%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
@@ -162,7 +161,7 @@ bs_y =  str2double(get(base_station_y_edit, 'String'));
 xticklabels('auto');
 
 hold(ax1, 'on');
-p = plot(ax1, bs_x, bs_y, 'bs',...
+handler_base = plot(ax1, bs_x, bs_y, 'bs',...
     'LineWidth',2,...
     'MarkerSize',15,...
     'MarkerEdgeColor','b',...
@@ -193,7 +192,7 @@ end
 disp(nodes);
 
 hold(ax1, 'on');
-node_handler = scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
+handler_nodes = scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
 hold(ax1, 'off');
 
 movegui(main_window, 'center');
@@ -210,14 +209,15 @@ node_energy_per_round = zeros(n_nodes, n_rounds);
 handler_text = [];
 handler_CH_lines = [];
 handler_lines = [];
+handler_CHs = [];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
     function set_bs(src, event)
         bs_x = str2double(get(base_station_x_edit, 'String'));
         bs_y =  str2double(get(base_station_y_edit, 'String'));
-        p(1).XData = bs_x;
-        p(1).YData = bs_y;
+        handler_base(1).XData = bs_x;
+        handler_base(1).YData = bs_y;
     end
 
     function set_area(src, event)
@@ -241,12 +241,12 @@ handler_lines = [];
             nodes(i,6) = init_energy;
         end
         disp(nodes);
-        p = plot(ax1, bs_x, bs_y, 'bs',...
+        handler_base = plot(ax1, bs_x, bs_y, 'bs',...
             'LineWidth',2,...
             'MarkerSize',15,...
             'MarkerEdgeColor','b',...
             'MarkerFaceColor', 'b');    
-        scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
+        handler_nodes = scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
         hold(ax1, 'off');
     end
 
@@ -354,13 +354,14 @@ handler_lines = [];
         
         msgbox({'Your graph was saved:'; graphName}, 'Success');
     end
-  h = 0;
+ 
     function calculate_clusters(src, event)
         method = get(cluster_method_chosen, 'String');
         value = get(cluster_method_chosen, 'Value');
         number_of_clusters = get(cluster_num_edit, 'String');
         number_of_neighbours = get(min_neigh, 'String');
         eps = get(epsilon, 'String');
+        reset_stats();
         if(isempty(number_of_clusters) & strcmp(method{value}, 'DBSCAN') == 0)
             msgbox('Please enter the number of clusters.', 'Error','error');
         else
@@ -381,8 +382,7 @@ handler_lines = [];
             case 'K-Means'    
                  [labels, centroids] = get_k_means_result(nodes, number_of_clusters);
                  nodes(:,9) = labels;  
-                 disp(nodes);
-                 CHs = ones(number_of_clusters, 3);
+                 CHs = ones(number_of_clusters, 6);%id, number of nodes, counter, x, y, msg_size
                  draw(centroids, number_of_clusters);
                  init_cluster_ids(number_of_clusters);
             case 'GMM-clusters'     
@@ -403,7 +403,7 @@ handler_lines = [];
     function calculate_weights(src, event)   
     end
 
-    function calculate_energy(cluster_heads, n)
+    function calculate_energy(n, round)
         %Etx = l*Eelec + l*Efs*d^2, d < d0
         %Etx = l*Eelec + l*Efs*d^4, d >= d0
         %Erx = l*Elec
@@ -416,71 +416,145 @@ handler_lines = [];
         EDA=5*0.000000001;
         %Do
         d0=sqrt(Efs/Emp);
-        Points = [cluster_heads(:,1:2); bs_x, bs_y];
+        %5 - status, 6 - energy = 2j or 0.5j, 7 - energy_consumption
+        msg = 10 * 8; % 5 || 8
+%total_energy;
+%total_energy_per_round;
+%node_energy_per_round ;
+        for i = 1:n
+            ch_x = nodes(CHs(i,1) == nodes(:,3), 1);
+            ch_y = nodes(CHs(i,1) == nodes(:,3), 2);
+            cluster = nodes(nodes(:,9) == i,1:3);
+            number_of_points = size(cluster,1);
+            
+            for j = 1:number_of_points
+                if(cluster(j,3) ~= CHs(i,1))
+                    Etx = 0;
+                    Erx = 0;
+                    Etotal = 0;
+                    d = ((cluster(j,1) - ch_x)^2 + (cluster(j,2) - ch_y)^2)^0.5;
+                    if(d0 > d)
+                           Etx = (msg + msg_header_size)*(Eelec) + (msg + msg_header_size)*Efs*d^2;
+                    elseif(d0 < d)
+                           Etx = (msg + msg_header_size)*(Eelec) + (msg + msg_header_size)*Emp*d^4;
+                    end                   
+                    Etotal = Etx;
+                    handler_text = [handler_text, text(cluster(j,1) + area_x/100, cluster(j,2), num2str(Etotal),'Color', 'k','FontSize', 10)];
+                    total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
+                    node_energy_per_round(j, round) = Etotal;
+                    nodes(j, 6) = nodes(j, 6) - Etotal;
+                    nodes(j, 7) = nodes(j, 7) + Etotal;
+                    
+                else                    
+                    Erx = (number_of_points - 1)*(msg + msg_header_size)*(Eelec) + number_of_points*(msg + msg_header_size)*(EDA);
+                    CHs(i,6) = (number_of_points)*(msg + msg_header_size);
+                    Etotal = Erx;
+                    total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
+                    node_energy_per_round(j, round) = Etotal;
+                    nodes(j, 6) = nodes(j, 6) - Etotal;
+                    nodes(j, 7) = nodes(j, 7) + Etotal;
+                    
+                end
+            end   
+        end   
+        
+        %%%%CH weigths%%%%
+        Points = [CHs(:,4:5); bs_x, bs_y];
         Dist = pdist2(Points, Points);
         Weights = Dist;
-        for i=1:n+1
+        for i=1:n
             for j=1:n+1
                 Etx = 0;
                 Erx = 0;
                 Etotal = 0;
                 if(i ~= j)
                     if(d0 > Dist(i,j))
-                        Etx = (msg_body_size + msg_header_size)*(Eelec+EDA) + (msg_body_size + msg_header_size)*Efs*Dist(i,j)^2;
+                        Etx = CHs(i,6)*(Eelec) + CHs(i,6)*Efs*Dist(i,j)^2;
                     elseif(d0 < Dist(i,j))
-                        Etx = (msg_body_size + msg_header_size)*(Eelec+EDA) + (msg_body_size + msg_header_size)*Emp*Dist(i,j)^4;
+                        Etx = CHs(i,6)*(Eelec) + CHs(i,6)*Emp*Dist(i,j)^4;
                     end
-                    Erx = (msg_body_size + msg_header_size)*(Eelec);
+                    Erx = CHs(i,6)*(Eelec);
                     Etotal = Etx + Erx;
+                    disp(Etotal);
                     Weights(i, j) = Etotal;
                     t_x = Points(i,1) + Points(j,1);
                     t_y = Points(i,2) + Points(j,2);
-                    text(t_x/2, t_y/2, num2str(Etotal),'Color', 'b','FontSize',11, 'FontWeight', 'bold' );
+                    path = strcat(num2str(i),":", num2str(j), "= ");
+                    if(j < n + 1)
+                        handler_text = [handler_text, text(t_x/2 + (i-j), t_y/2 + i, strcat(path,num2str(Etotal)),'Color', 'b','FontSize',11, 'FontWeight', 'bold' )];
+                    else 
+                        handler_text = [handler_text, text(t_x/2, t_y/2, strcat(path,num2str(Etotal)),'Color', 'r','FontSize',11, 'FontWeight', 'bold' )];
+                    end
                 end
             end
         end
-        
-        for i = 1:n
-            ch_x = cluster_heads(i,1);
-            ch_y = cluster_heads(i,2);
-            cluster = nodes(labels == i,1:2);
-            number_of_points = size(cluster,1);
-            
-            for j = 1:number_of_points
-                Etx = 0;
-                Erx = 0;
-                Etotal = 0;
-                d = ((cluster(j,1) - ch_x)^2 + (cluster(j,2) - ch_y)^2)^0.5;
-                if(d0 > d)
-                       Etx = (msg_body_size + msg_header_size)*(Eelec+EDA) + (msg_body_size + msg_header_size)*Efs*d^2;
-                elseif(d0 < d)
-                       Etx = (msg_body_size + msg_header_size)*(Eelec+EDA) + (msg_body_size + msg_header_size)*Efs*d^4;
-                end
-                Erx = (msg_body_size + msg_header_size)*(Eelec);
-                Etotal = Etx + Erx;
-                text(cluster(j,1), cluster(j,2), num2str(Etotal),'Color', 'k','FontSize', 10);
-            end   
-        end     
-
-        %Graph calculation
-        cluster_graph = graph(Weights);
-        for i=1:n
-            [path, d] = shortestpath(cluster_graph, n+1, i);
-            disp(path);
-            disp(d);
-        end
-    end
-
-    function calculate_paths(src, event)
-
+        Weights(n+1,:) = transpose(Weights(:,n+1));
+        disp(Weights);
         method = get(path_method_chosen, 'String');
         value = get(path_method_chosen, 'Value');
+        cluster_graph = digraph(Weights);
         switch method{value} %check the method for drawing 
             case 'Dijkstra'
-            case 'Bellman-Ford '    
-
+                for i=1:n                   
+                    [path, d] = shortestpath(cluster_graph, n+1, i, 'Method', 'positive');
+                    disp(path);
+                    disp(d);
+%                     for j=size(path):-1:1
+%                         id = path(j);
+%                         Etx = 0;
+%                         Erx = 0;
+%                         Etotal = 0;
+%                         
+%                     end
+                end
+            case 'Bellman-Fords'    
+                for i=1:n
+                    [path, d] = shortestpath(cluster_graph, n+1, i, 'Method', 'mixed');
+                    disp(path);
+                    disp(d);
+                end
         end
 
+%     Points = [CHs(:,4:5); bs_x, bs_y];
+%         Dist = pdist2(Points, Points);
+%         Weights = Dist;
+%         for i=1:n+1
+%             for j=1:n+1
+%                 Etx = 0;
+%                 Erx = 0;
+%                 Etotal = 0;
+%                 if(i ~= j)
+%                     if(d0 > Dist(i,j))
+%                         Etx = CHs(i,6)*(Eelec) + CHs(i,6)*Efs*Dist(i,j)^2;
+%                     elseif(d0 < Dist(i,j))
+%                         Etx = CHs(i,6)*(Eelec) + CHs(i,6)*Emp*Dist(i,j)^4;
+%                     end
+%                     Erx = (msg_body_size + msg_header_size)*(Eelec);
+%                     Etotal = Etx + Erx;
+%                     Weights(i, j) = Etotal;
+%                     t_x = Points(i,1) + Points(j,1);
+%                     t_y = Points(i,2) + Points(j,2);
+%                     handler_text = [handler_text, text(t_x/2, t_y/2, num2str(Etotal),'Color', 'b','FontSize',11, 'FontWeight', 'bold' )];
+%                 end
+%             end
+%         end
+% 
+%     end
+end
+
+    function reset_stats(src, event)
+        nodes(:,5) = 1;
+        nodes(:,6) = init_energy;
+        nodes(:,7) = 0;
+        nodes(:,8) = 0;
+        total_energy = 0;
+        total_energy_per_round = zeros(n_rounds,1);
+        node_energy_per_round = zeros(n_nodes, n_rounds);
+        
+        num_of_rounds_edit.String =  num2str(n_rounds);
+        total_enerdy_edit.String = num2str(total_energy);
+        %nodes_alive_edit.String =  
+        %nodes_dead_edit.String =  
     end
 
     function init_cluster_ids(n)     
@@ -501,6 +575,8 @@ handler_lines = [];
             for j = 1:number_of_points
                 if(CHs(i,3) == cluster(j, 4))
                     CHs(i,1) =  cluster(j, 3);
+                    CHs(i,4) = cluster(j, 1);
+                    CHs(i,5) = cluster(j, 2);
                     nodes(cluster(j,3) == nodes(:,3), 8) = 1;   
                 else
                     nodes(cluster(j,3) == nodes(:,3), 8) = 0;
@@ -510,7 +586,7 @@ handler_lines = [];
             if(CHs(i,3) < CHs(i,2)) 
                 CHs(i,3) = CHs(i,3) + 1;
             else
-                CHs(i,2) = 1;
+                CHs(i,3) = 1;
             end
         end
     end
@@ -536,44 +612,50 @@ handler_lines = [];
         n_rounds = str2double(get(num_of_rounds_edit, 'String'));
         number_of_clusters = get(cluster_num_edit, 'String');
         number_of_clusters = str2double(number_of_clusters);      
-        
-        for i=n_rounds:-1:0  
-            num_of_rounds_edit.String =  num2str(i);          
-            for i = 1:n
-                nodes(cluster_sizes(i,2) == nodes(:,4), 8) = 1;
-                cluster = nodes(nodes(:,9) == i,1:2);
-                nodes(cluster_sizes(i,2) == nodes(:,4), 8) = 1;
-                number_of_points = size(cluster,1);
-                calculate_energy(cluster, number_of_points);
-                draw_cluster_lines(cluster, number_of_points);
-                draw_lines(cluster, number_of_points);
-                if(cluster_sizes(i,2) < cluster_sizes(i,1)) 
-                    cluster_sizes(i,2) = cluster_sizes(i,2) + 1;
-                else
-                    cluster_sizes(i,2) = 1;
-                end
-            end    
-            pause(1);
+        reset_stats();
+        for i=n_rounds:-1:0
+            num_of_rounds_edit.String =  num2str(i);
+            delete(handler_CHs);
+            delete(handler_CH_lines);
+            delete(handler_lines);
+            delete(handler_text);   
+            init_CHs(number_of_clusters);    
+            draw_cluster_lines(number_of_clusters);
+            draw_lines(number_of_clusters);
+            calculate_energy(number_of_clusters, i); 
+            total_energy = total_energy + total_energy_per_round(i); 
+            total_enerdy_edit.String = num2str(total_energy);
+            %nodes_alive_edit.String =  
+            %nodes_dead_edit.String =   
+            
+            pause(2);
+            
         end
     end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%DRAWING%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% handler_text = [];
+% handler_CH_lines = [];
+% handler_lines = [];
+% handler_CHs = [];
+
     function draw(centroids, n_clusters)
         cla;
         hold(ax1, 'on');
         for i=1:n_clusters
            draw_circle(centroids(i,1), centroids(i,2), centroids(i, 3)); %(x, y, max_dist);
-           scatter(ax1, nodes(nodes(:,9) == i, 1), nodes(nodes(:,9) == i, 2), 'o' , 'filled');
+           handler_nodes = scatter(ax1, nodes(nodes(:,9) == i, 1), nodes(nodes(:,9) == i, 2), 'o' , 'filled');
            text(centroids(i,1)+area_x/100, centroids(i,2), num2str(i), 'Color', 'b','FontSize', 12, 'FontWeight', 'bold');
         end
-        p = plot(ax1, bs_x, bs_y, 'bs',...
+        handler_base = plot(ax1, bs_x, bs_y, 'bs',...
             'LineWidth',2,...
             'MarkerSize',15,...
             'MarkerEdgeColor','b',...
-            'MarkerFaceColor', 'b');        
-        scatter(ax1, centroids(:,1), centroids(:,2),100, 'b*', 'LineWidth', 2,...
-            'MarkerEdgeColor','b',...
-            'MarkerFaceColor', 'b');        
+            'MarkerFaceColor', 'b');
+         text(bs_x+area_x/100, bs_y, "BS", 'Color', 'b','FontSize', 12, 'FontWeight', 'bold');
+         scatter(ax1, centroids(:,1), centroids(:,2),100, 'rx', 'LineWidth', 2,...
+            'MarkerEdgeColor','r',...
+            'MarkerFaceColor', 'r');        
         hold(ax1, 'off');      
     end
 
@@ -584,28 +666,34 @@ handler_lines = [];
         plot(xunit + x, yunit  + y, ':k');
     end
 
-    function draw_cluster_lines(cluster_heads, n)
-         hold(ax1, 'on');  
-         for i = 1:n   
-             plot([cluster_heads(i,1), bs_x], [cluster_heads(i,2), bs_y], 'b');          
+    function draw_cluster_lines(n)
+         hold(ax1, 'on');         
+         for i = 1:n
+             ch_x = nodes(CHs(i,1) == nodes(:,3), 1);
+             ch_y = nodes(CHs(i,1) == nodes(:,3), 2);
+                 
+             handler_CHs = [handler_CHs ,plot(ax1, ch_x, ch_y, 'b*', 'LineWidth', 2, 'MarkerSize',15, 'MarkerEdgeColor','b','MarkerFaceColor', 'b')];
+             handler_CH_lines = [handler_CH_lines, plot([ch_x, bs_x], [ch_y, bs_y], '--r')];    
              for j = 2:n
-                 if(j > i) 
-                     plot([cluster_heads(i,1), cluster_heads(j,1)], [cluster_heads(i,2), cluster_heads(j,2)],'b'); 
-                 end;
+                 if(j > i)
+                     next_ch_x = nodes(CHs(j,1) == nodes(:,3), 1);
+                     next_ch_y = nodes(CHs(j,1) == nodes(:,3), 2);                    
+                     handler_CH_lines = [handler_CH_lines, plot([ch_x, next_ch_x], [ch_y, next_ch_y],'--b')]; 
+                 end
             end  
          end      
          hold(ax1, 'off');
     end
 
-    function draw_lines(cluster_heads, n)
+    function draw_lines(n)
          hold(ax1, 'on');  
          for i = 1:n
-            ch_x = cluster_heads(i,1);
-            ch_y = cluster_heads(i,2);
+            ch_x = nodes(CHs(i,1) == nodes(:,3), 1);
+            ch_y = nodes(CHs(i,1) == nodes(:,3), 2);
             cluster = nodes(nodes(:,9) == i,1:2);
             number_of_points = size(cluster,1);
             for j = 1:number_of_points     
-                 plot([cluster(j,1), ch_x], [cluster(j,2), ch_y],'--k');
+                handler_lines = [handler_lines, plot([cluster(j,1), ch_x], [cluster(j,2), ch_y],'-.k')];
             end   
          end     
          hold(ax1, 'off');
