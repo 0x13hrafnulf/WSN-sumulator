@@ -446,7 +446,7 @@ handler_CHs = [];
                     nodes(j, 7) = nodes(j, 7) + Etotal;
                     
                 else                    
-                    Erx = (number_of_points - 1)*(msg + msg_header_size)*(Eelec) + number_of_points*(msg + msg_header_size)*(EDA);
+                    Erx = (number_of_points - 1)*(msg + msg_header_size)*(Eelec) + number_of_points*(msg + msg_header_size)*(EDA);%%%EDA check if header is required
                     CHs(i,6) = number_of_points*msg;
                     Etotal = Erx;
                     total_energy_per_round(round,1) = total_energy_per_round(round,1) + Etotal;
@@ -499,13 +499,15 @@ handler_CHs = [];
                     [path, d] = shortestpath(cluster_graph, n+1, i, 'Method', 'positive');
 %                     for j=size(path):-1:2
 %                         id = path(j);
-%                         next_id = path(j - 1);
-%                         nodes(CHs(id,1) = nodes(:,3), 6)
-%                         Etx = CHs(id,6)*(Eelec) + CHs(i,6)*Efs*Dist(id,next_id)^2;
 %                         Etx = 0;
 %                         Erx = 0;
 %                         Etotal = 0;
-%                         
+%                         if(id == i)
+%                         next_id = path(j - 1);
+%                         nodes(CHs(id,1) = nodes(:,3), 6)
+%                         Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Efs*Dist(id,next_id)^2;
+%                         Etotal = Etx;
+%                         else Etotal = Etx+Erx
 %                     end
                 end
             case 'Bellman-Fords'    
@@ -549,7 +551,7 @@ end
         nodes(:,7) = 0;
         nodes(:,8) = 0;
         total_energy = 0;
-        total_energy_per_round = zeros(n_rounds,1);
+        total_energy_per_round = zeros(n_rounds, 1);
         node_energy_per_round = zeros(n_nodes, n_rounds);
         
         num_of_rounds_edit.String =  num2str(n_rounds);
@@ -614,8 +616,8 @@ end
         number_of_clusters = get(cluster_num_edit, 'String');
         number_of_clusters = str2double(number_of_clusters);      
         reset_stats();
-        for i=n_rounds:-1:0
-            num_of_rounds_edit.String =  num2str(i);
+        for i=1:n_rounds
+            num_of_rounds_edit.String =  num2str(n_rounds - i);
             delete(handler_CHs);
             delete(handler_CH_lines);
             delete(handler_lines);
