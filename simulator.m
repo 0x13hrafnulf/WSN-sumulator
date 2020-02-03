@@ -498,29 +498,25 @@ n_clusters = 0;
             case 'Dijkstra'
                 for i=1:n                   
                     [path, d] = shortestpath(cluster_graph, n+1, i, 'Method', 'positive');
-                    %disp(path);
-                    %disp(d);
+                    disp(path);
+                    msg = CHs(i,6);
                     for j=size(path,2):-1:2
-                        id = path(j);
-                        
+                        id = path(j);                        
                         Etx = 0;
                         Erx = 0;
                         Etotal = 0;
-%                         disp("J");
-%                         disp(j);
-%                         disp("ID");
-%                         disp(id);
-%                         disp("SIZE");
-%                         disp(size(path,2));
+                        disp("ID");
+                        disp(id);
                         next_id = path(j - 1);
-%                         disp("Id: Bites");
-%                         disp(CHs(id,6));
-                        if(id == i)          
-                            %disp(next_id);
+                        disp("Id: Bites");
+                        disp(msg);
+                        if(id == i)
+                            disp("NextID");
+                            disp(next_id);
                             if(d0 > Dist(id,next_id))
-                                Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Efs*Dist(id,next_id)^2;     
+                                Etx = (msg + msg_header_size)*(Eelec) + (msg + msg_header_size)*Efs*Dist(id,next_id)^2;     
                             else 
-                                Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Emp*Dist(id,next_id)^4;   
+                                Etx = (msg + msg_header_size)*(Eelec) + (msg + msg_header_size)*Emp*Dist(id,next_id)^4;   
                             end
                             Etotal = Etx;
                             total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
@@ -529,19 +525,21 @@ n_clusters = 0;
                             nodes(CHs(id,1), 7) = nodes(CHs(id,1), 7) + Etotal;
                             cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
                             total_cluster_energy(id) = total_cluster_energy(id) + Etotal;
+                            disp("Etx");
+                            disp(Etx);
                             if(next_id ~= n+1) 
-                                CHs(next_id, 6) = CHs(next_id, 6) + CHs(id,6);
-                               % disp("Next_id: Bites");
-                               % disp(CHs(next_id, 6));
+                               msg = msg + CHs(next_id, 6);      
+                               disp("Next_id: Bites");
+                               disp(msg);
                             end
                         else
                             prev_id = path(j+1);
                             if(d0 > Dist(id,next_id))
-                                Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Efs*Dist(id, next_id)^2;
+                                Etx = (msg + msg_header_size)*(Eelec) + (msg + msg_header_size)*Efs*Dist(id, next_id)^2;
                             else 
-                                Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Emp*Dist(id, next_id)^4;    
+                                Etx = (msg + msg_header_size)*(Eelec) + (msg + msg_header_size)*Emp*Dist(id, next_id)^4;    
                             end 
-                            Erx = (CHs(prev_id,6) + msg_header_size)*(Eelec);
+                            Erx = (msg - CHs(id, 6) + msg_header_size)*(Eelec) + EDA * (msg + msg_header_size);
                             Etotal = Etx+Erx;
                             total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
                             node_energy_per_round(CHs(id,1), round) = node_energy_per_round(CHs(id,1), round) + Etotal;
@@ -549,16 +547,17 @@ n_clusters = 0;
                             nodes(CHs(id,1), 7) = nodes(CHs(id,1), 7) + Etotal;
                             cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
                             total_cluster_energy(id) = total_cluster_energy(id) + Etotal;
+                            disp("Etx");
+                            disp(Etx);
+                            disp("Erx");
+                            disp(Erx);
                             if(next_id ~= n+1)
-                                CHs(next_id, 6) = CHs(next_id, 6) + CHs(id,6);
-                                %disp("Next_id: Bites");
-                                %disp(CHs(next_id, 6));
-                            end;                          
-                        end
-                       % disp("Etotal");
-                        %disp(Etotal);
-                    end
-                    
+                               msg = msg + CHs(next_id, 6);      
+                               disp("Next_id: Bites");
+                               disp(msg);
+                            end                          
+                        end                   
+                    end    
                 end
             case 'Bellman-Fords'    
                 for i=1:n
@@ -678,11 +677,11 @@ end
             calculate_energy(number_of_clusters, round); 
             total_energy = total_energy + total_energy_per_round(round); 
             total_enerdy_edit.String = num2str(total_energy);
-            disp(total_energy_per_round);
-            disp(node_energy_per_round);
-            disp(total_energy);
-            disp(cluster_energy_per_round);
-            disp(total_cluster_energy);
+            %disp(total_energy_per_round);
+            %disp(node_energy_per_round);
+            %disp(total_energy);
+            %disp(cluster_energy_per_round);
+            %disp(total_cluster_energy);
             %nodes_alive_edit.String =  
             %nodes_dead_edit.String =   
             pause(2);
