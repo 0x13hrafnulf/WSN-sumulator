@@ -180,14 +180,14 @@ msg_body_size = 8 * str2double(get(msg_body_size_edit, 'String')); %lbody = 250 
 msg_header_size = 8 * str2double(get(msg_header_size_edit, 'String')); %lheader = 43 bytes, 344 bits
 
 nodes = zeros(n_nodes, 9); %x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label
-for i = 1:n_nodes
+for nd = 1:n_nodes
     
-    nodes(i,1) = rand(1,1)*area_x;	
-    nodes(i,2) = rand(1,1)*area_y;
-    nodes(i,3) = i;
-    nodes(i,4) = 0;
-    nodes(i,5) = 1;
-    nodes(i,6) = init_energy;
+    nodes(nd,1) = rand(1,1)*area_x;	
+    nodes(nd,2) = rand(1,1)*area_y;
+    nodes(nd,3) = nd;
+    nodes(nd,4) = 0;
+    nodes(nd,5) = 1;
+    nodes(nd,6) = init_energy;
 end
 disp(nodes);
 
@@ -206,11 +206,13 @@ CHs = [];
 total_energy = 0;
 total_energy_per_round = zeros(n_rounds,1);
 node_energy_per_round = zeros(n_nodes, n_rounds);
+cluster_energy_per_round = [];
+total_cluster_energy = [];
 handler_text = [];
 handler_CH_lines = [];
 handler_lines = [];
 handler_CHs = [];
-
+n_clusters = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
     function set_bs(src, event)
@@ -385,6 +387,7 @@ handler_CHs = [];
                  CHs = ones(number_of_clusters, 6);%id, number of nodes, counter, x, y, msg_size
                  draw(centroids, number_of_clusters);
                  init_cluster_ids(number_of_clusters);
+                 n_clusters = number_of_clusters;
             case 'GMM-clusters'     
                  labels, centroids = get_gmm_result(nodes, number_of_clusters);
                  nodes = [nodes, labels];
@@ -418,12 +421,10 @@ handler_CHs = [];
         d0=sqrt(Efs/Emp);
         %5 - status, 6 - energy = 2j or 0.5j, 7 - energy_consumption
         msg = 10 * 8; % 5 || 8
-%total_energy;
-%total_energy_per_round;
-%node_energy_per_round ;
+
         for i = 1:n
-            ch_x = nodes(CHs(i,1) == nodes(:,3), 1);
-            ch_y = nodes(CHs(i,1) == nodes(:,3), 2);
+            ch_x = nodes(CHs(i,1), 1);
+            ch_y = nodes(CHs(i,1), 2);
             cluster = nodes(nodes(:,9) == i,1:3);
             number_of_points = size(cluster,1);
             
@@ -440,20 +441,22 @@ handler_CHs = [];
                     end                   
                     Etotal = Etx;
                     handler_text = [handler_text, text(cluster(j,1) + area_x/100, cluster(j,2), num2str(Etotal),'Color', 'k','FontSize', 10)];
-                    total_energy_per_round(round,1) = total_energy_per_round(round,1) + Etotal;
-                    node_energy_per_round(j, round) = Etotal;
-                    nodes(j, 6) = nodes(j, 6) - Etotal;
-                    nodes(j, 7) = nodes(j, 7) + Etotal;
-                    
+                    total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
+                    node_energy_per_round(cluster(j,3), round) = Etotal;
+                    nodes(cluster(j,3), 6) = nodes(cluster(j,3), 6) - Etotal;
+                    nodes(cluster(j,3), 7) = nodes(cluster(j,3), 7) + Etotal;
+                    cluster_energy_per_round(i, round) = cluster_energy_per_round(i, round) + Etotal;
+                    total_cluster_energy(i) = total_cluster_energy(i) + Etotal;
                 else                    
                     Erx = (number_of_points - 1)*(msg + msg_header_size)*(Eelec) + number_of_points*(msg + msg_header_size)*(EDA);%%%EDA check if header is required
                     CHs(i,6) = number_of_points*msg;
                     Etotal = Erx;
-                    total_energy_per_round(round,1) = total_energy_per_round(round,1) + Etotal;
-                    node_energy_per_round(j, round) = Etotal;
-                    nodes(j, 6) = nodes(j, 6) - Etotal;
-                    nodes(j, 7) = nodes(j, 7) + Etotal;
-                    
+                    total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
+                    node_energy_per_round(cluster(j,3), round) = Etotal;
+                    nodes(cluster(j,3), 6) = nodes(cluster(j,3), 6) - Etotal;
+                    nodes(cluster(j,3), 7) = nodes(cluster(j,3), 7) + Etotal;
+                    cluster_energy_per_round(i, round) = cluster_energy_per_round(i, round) + Etotal;
+                    total_cluster_energy(i) = total_cluster_energy(i) + Etotal;
                 end
             end   
         end   
@@ -475,7 +478,6 @@ handler_CHs = [];
                     end
                     Erx = (CHs(i,6) + msg_header_size)*(Eelec);
                     Etotal = Etx + Erx;
-                    disp(Etotal);
                     Weights(i, j) = Etotal;
                     t_x = Points(i,1) + Points(j,1);
                     t_y = Points(i,2) + Points(j,2);
@@ -488,7 +490,6 @@ handler_CHs = [];
                 end
             end
         end
-        disp(CHs);
         Weights(n+1,:) = transpose(Weights(:,n+1));
         method = get(path_method_chosen, 'String');
         value = get(path_method_chosen, 'Value');
@@ -497,18 +498,67 @@ handler_CHs = [];
             case 'Dijkstra'
                 for i=1:n                   
                     [path, d] = shortestpath(cluster_graph, n+1, i, 'Method', 'positive');
-%                     for j=size(path):-1:2
-%                         id = path(j);
-%                         Etx = 0;
-%                         Erx = 0;
-%                         Etotal = 0;
-%                         if(id == i)
-%                         next_id = path(j - 1);
-%                         nodes(CHs(id,1) = nodes(:,3), 6)
-%                         Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Efs*Dist(id,next_id)^2;
-%                         Etotal = Etx;
-%                         else Etotal = Etx+Erx
-%                     end
+                    %disp(path);
+                    %disp(d);
+                    for j=size(path,2):-1:2
+                        id = path(j);
+                        
+                        Etx = 0;
+                        Erx = 0;
+                        Etotal = 0;
+%                         disp("J");
+%                         disp(j);
+%                         disp("ID");
+%                         disp(id);
+%                         disp("SIZE");
+%                         disp(size(path,2));
+                        next_id = path(j - 1);
+%                         disp("Id: Bites");
+%                         disp(CHs(id,6));
+                        if(id == i)          
+                            %disp(next_id);
+                            if(d0 > Dist(id,next_id))
+                                Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Efs*Dist(id,next_id)^2;     
+                            else 
+                                Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Emp*Dist(id,next_id)^4;   
+                            end
+                            Etotal = Etx;
+                            total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
+                            node_energy_per_round(CHs(id,1), round) = node_energy_per_round(CHs(id,1), round) + Etotal;
+                            nodes(CHs(id,1), 6) = nodes(CHs(id,1), 6) - Etotal;
+                            nodes(CHs(id,1), 7) = nodes(CHs(id,1), 7) + Etotal;
+                            cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
+                            total_cluster_energy(id) = total_cluster_energy(id) + Etotal;
+                            if(next_id ~= n+1) 
+                                CHs(next_id, 6) = CHs(next_id, 6) + CHs(id,6);
+                               % disp("Next_id: Bites");
+                               % disp(CHs(next_id, 6));
+                            end
+                        else
+                            prev_id = path(j+1);
+                            if(d0 > Dist(id,next_id))
+                                Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Efs*Dist(id, next_id)^2;
+                            else 
+                                Etx = (CHs(id,6) + msg_header_size)*(Eelec) + (CHs(id,6) + msg_header_size)*Emp*Dist(id, next_id)^4;    
+                            end 
+                            Erx = (CHs(prev_id,6) + msg_header_size)*(Eelec);
+                            Etotal = Etx+Erx;
+                            total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
+                            node_energy_per_round(CHs(id,1), round) = node_energy_per_round(CHs(id,1), round) + Etotal;
+                            nodes(CHs(id,1), 6) = nodes(CHs(id,1), 6) - Etotal;
+                            nodes(CHs(id,1), 7) = nodes(CHs(id,1), 7) + Etotal;
+                            cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
+                            total_cluster_energy(id) = total_cluster_energy(id) + Etotal;
+                            if(next_id ~= n+1)
+                                CHs(next_id, 6) = CHs(next_id, 6) + CHs(id,6);
+                                %disp("Next_id: Bites");
+                                %disp(CHs(next_id, 6));
+                            end;                          
+                        end
+                       % disp("Etotal");
+                        %disp(Etotal);
+                    end
+                    
                 end
             case 'Bellman-Fords'    
                 for i=1:n
@@ -551,9 +601,10 @@ end
         nodes(:,7) = 0;
         nodes(:,8) = 0;
         total_energy = 0;
-        total_energy_per_round = zeros(n_rounds, 1);
+        total_energy_per_round = zeros(n_rounds,1);
         node_energy_per_round = zeros(n_nodes, n_rounds);
-        
+        cluster_energy_per_round = zeros(n_clusters, n_rounds);
+        total_cluster_energy = zeros(n_clusters,1);
         num_of_rounds_edit.String =  num2str(n_rounds);
         total_enerdy_edit.String = num2str(total_energy);
         %nodes_alive_edit.String =  
@@ -566,7 +617,7 @@ end
             number_of_points = size(cluster,1);
             CHs(i,2) = number_of_points;    
             for j = 1:number_of_points
-               nodes(cluster(j,3) == nodes(:,3) ,4) = j;         
+               nodes(cluster(j,3),4) = j;         
             end
         end 
     end
@@ -580,11 +631,10 @@ end
                     CHs(i,1) =  cluster(j, 3);
                     CHs(i,4) = cluster(j, 1);
                     CHs(i,5) = cluster(j, 2);
-                    nodes(cluster(j,3) == nodes(:,3), 8) = 1;   
+                    nodes(cluster(j,3), 8) = 1;   
                 else
-                    nodes(cluster(j,3) == nodes(:,3), 8) = 0;
+                    nodes(cluster(j,3), 8) = 0;
                 end
-
             end
             if(CHs(i,3) < CHs(i,2)) 
                 CHs(i,3) = CHs(i,3) + 1;
@@ -616,8 +666,8 @@ end
         number_of_clusters = get(cluster_num_edit, 'String');
         number_of_clusters = str2double(number_of_clusters);      
         reset_stats();
-        for i=1:n_rounds
-            num_of_rounds_edit.String =  num2str(n_rounds - i);
+        for round=1:n_rounds
+            num_of_rounds_edit.String =  num2str(n_rounds - round);
             delete(handler_CHs);
             delete(handler_CH_lines);
             delete(handler_lines);
@@ -625,15 +675,20 @@ end
             init_CHs(number_of_clusters);    
             draw_cluster_lines(number_of_clusters);
             draw_lines(number_of_clusters);
-            calculate_energy(number_of_clusters, i); 
-            total_energy = total_energy + total_energy_per_round(i,1); 
+            calculate_energy(number_of_clusters, round); 
+            total_energy = total_energy + total_energy_per_round(round); 
             total_enerdy_edit.String = num2str(total_energy);
+            disp(total_energy_per_round);
+            disp(node_energy_per_round);
+            disp(total_energy);
+            disp(cluster_energy_per_round);
+            disp(total_cluster_energy);
             %nodes_alive_edit.String =  
             %nodes_dead_edit.String =   
-            
             pause(2);
             
         end
+        %disp(total_energy_per_round);
     end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%DRAWING%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -672,15 +727,15 @@ end
     function draw_cluster_lines(n)
          hold(ax1, 'on');         
          for i = 1:n
-             ch_x = nodes(CHs(i,1) == nodes(:,3), 1);
-             ch_y = nodes(CHs(i,1) == nodes(:,3), 2);
+             ch_x = nodes(CHs(i,1), 1);
+             ch_y = nodes(CHs(i,1), 2);
                  
              handler_CHs = [handler_CHs ,plot(ax1, ch_x, ch_y, 'b*', 'LineWidth', 2, 'MarkerSize',15, 'MarkerEdgeColor','b','MarkerFaceColor', 'b')];
              handler_CH_lines = [handler_CH_lines, plot([ch_x, bs_x], [ch_y, bs_y], '--r')];    
              for j = 2:n
                  if(j > i)
-                     next_ch_x = nodes(CHs(j,1) == nodes(:,3), 1);
-                     next_ch_y = nodes(CHs(j,1) == nodes(:,3), 2);                    
+                     next_ch_x = nodes(CHs(j,1), 1);
+                     next_ch_y = nodes(CHs(j,1), 2);                    
                      handler_CH_lines = [handler_CH_lines, plot([ch_x, next_ch_x], [ch_y, next_ch_y],'--b')]; 
                  end
             end  
@@ -691,8 +746,8 @@ end
     function draw_lines(n)
          hold(ax1, 'on');  
          for i = 1:n
-            ch_x = nodes(CHs(i,1) == nodes(:,3), 1);
-            ch_y = nodes(CHs(i,1) == nodes(:,3), 2);
+            ch_x = nodes(CHs(i,1), 1);
+            ch_y = nodes(CHs(i,1), 2);
             cluster = nodes(nodes(:,9) == i,1:2);
             number_of_points = size(cluster,1);
             for j = 1:number_of_points     
