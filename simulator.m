@@ -147,8 +147,8 @@ uicontrol('Parent', path_panel, 'Style', 'pushbutton', 'String', 'Reset statisti
 area_x = str2double(get(area_size_x_edit, 'String'));
 area_y = str2double(get(area_size_y_edit, 'String'));    
 ax1 = axes('Units', 'Normalized', 'Position', [0.05, 0.25, 0.9, 0.70]);
-xlim([0 area_x]);
-ylim([0 area_y]);
+%xlim([0 area_x]);
+%ylim([0 area_y]);
 grid(ax1, 'on');
 %axis square;
 title(ax1, 'Network','FontWeight','bold');
@@ -189,7 +189,6 @@ for nd = 1:n_nodes
     nodes(nd,5) = 1;
     nodes(nd,6) = init_energy;
 end
-disp(nodes);
 
 hold(ax1, 'on');
 handler_nodes = scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
@@ -225,8 +224,8 @@ n_clusters = 0;
     function set_area(src, event)
         area_x = str2double(get(area_size_x_edit, 'String'));
         area_y = str2double(get(area_size_y_edit, 'String'));    
-        xlim([0 area_x]);
-        ylim([0 area_y]);
+        %xlim([0 area_x]);
+        %ylim([0 area_y]);
     end
 
     function generate_nodes(src, event)
@@ -241,8 +240,7 @@ n_clusters = 0;
             nodes(i,4) = 0;
             nodes(i,5) = 1;
             nodes(i,6) = init_energy;
-        end
-        disp(nodes);
+        end   
         handler_base = plot(ax1, bs_x, bs_y, 'bs',...
             'LineWidth',2,...
             'MarkerSize',15,...
@@ -275,19 +273,27 @@ n_clusters = 0;
             case ".mat"
                 nodes = nodes.D; %specify matrix name that being loaded from file 
         end
-        marker = ['+','o','*','.','s','d','^','v','>','<','p','h'];
-        colors = ['r', 'g', 'b', 'y', 'm', 'c', 'w', 'k'];
-        %label = input_matrix(:,3);   
-        %n = max(label);
-        %for i = 1:n
-                %index = 1 + mod(i, 12);
-                %indexcol = 1 + mod(i, 8);
-                %col = colors(indexcol);
-                %col2 = colors(8 - indexcol + 1);
-                %scatter(ax1, input_matrix(label == i,1), input_matrix(label == i,2), 'filled', marker(index), 'MarkerFaceColor', col, 'MarkerEdgeColor', col2);
-                %hold(ax1, 'on');    
-        %end
-        scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
+        
+        n_nodes = size(nodes(:,1));
+        n_nodes.String =  num2str(n_nodes);
+        
+        area_x = max(nodes(:,1));
+        area_y = max(nodes(:,2));
+        area_size_x_edit.String = num2str(area_x);
+        area_size_y_edit.String = num2str(area_y);
+        
+        bs_x = area_x/2;
+        bs_y = area_y/2;
+        base_station_x_edit.String = num2str(bs_x);
+        base_station_y_edit.String = num2str(bs_y);
+        
+        cla; 
+        handler_base = plot(ax1, bs_x, bs_y, 'bs',...
+            'LineWidth',2,...
+            'MarkerSize',15,...
+            'MarkerEdgeColor','b',...
+            'MarkerFaceColor', 'b');  
+        handler_nodes = scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
     end
     
     function fn = get_filename_for_saving()
@@ -383,7 +389,7 @@ n_clusters = 0;
                 end 
             case 'K-Means'    
                  [labels, centroids] = get_k_means_result(nodes, number_of_clusters);
-                 nodes(:,9) = labels;  
+                 nodes(:,9) = labels;%x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label  
                  CHs = ones(number_of_clusters, 6);%id, number of nodes, counter, x, y, msg_size
                  draw(centroids, number_of_clusters);
                  init_cluster_ids(number_of_clusters);
@@ -401,10 +407,6 @@ n_clusters = 0;
         end
     end
     
- 
-
-    function calculate_weights(src, event)   
-    end
 
     function calculate_energy(n, round)
         %Etx = l*Eelec + l*Efs*d^2, d < d0
@@ -497,17 +499,17 @@ n_clusters = 0;
         switch method{value} %check the method for drawing 
             case 'Dijkstra'
                 for i=1:n                   
-                    [path, d] = shortestpath(cluster_graph, n+1, i, 'Method', 'positive');
+                    [path, d] = shortestpath(cluster_graph, i, n+1, 'Method', 'positive');
                     disp(path);
                     msg_s = CHs(i,6);
-                    for j=size(path,2):-1:2
+                    for j=1:size(path,2)-1
                         id = path(j);                        
                         Etx = 0;
                         Erx = 0;
                         Etotal = 0;
                         disp("ID");
                         disp(id);
-                        next_id = path(j - 1);
+                        next_id = path(j + 1);
                         disp("Id: Bites");
                         disp(msg_s);
                         if(id == i)
@@ -533,8 +535,7 @@ n_clusters = 0;
                                disp("Next_id: Bites");
                                disp(msg_s);
                             end
-                        else
-                            prev_id = path(j+1);
+                        else                         
                             if(d0 > Dist(id,next_id))
                                 Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Efs*Dist(id, next_id)^2;
                             else 
@@ -567,32 +568,6 @@ n_clusters = 0;
                     disp(d);
                 end
         end
-      disp(Dist);
-%     Points = [CHs(:,4:5); bs_x, bs_y];
-%         Dist = pdist2(Points, Points);
-%         Weights = Dist;
-%         for i=1:n+1
-%             for j=1:n+1
-%                 Etx = 0;
-%                 Erx = 0;
-%                 Etotal = 0;
-%                 if(i ~= j)
-%                     if(d0 > Dist(i,j))
-%                         Etx = CHs(i,6)*(Eelec) + CHs(i,6)*Efs*Dist(i,j)^2;
-%                     elseif(d0 < Dist(i,j))
-%                         Etx = CHs(i,6)*(Eelec) + CHs(i,6)*Emp*Dist(i,j)^4;
-%                     end
-%                     Erx = (msg_body_size + msg_header_size)*(Eelec);
-%                     Etotal = Etx + Erx;
-%                     Weights(i, j) = Etotal;
-%                     t_x = Points(i,1) + Points(j,1);
-%                     t_y = Points(i,2) + Points(j,2);
-%                     handler_text = [handler_text, text(t_x/2, t_y/2, num2str(Etotal),'Color', 'b','FontSize',11, 'FontWeight', 'bold' )];
-%                 end
-%             end
-%         end
-% 
-%     end
 end
 
     function reset_stats(src, event)
@@ -678,11 +653,11 @@ end
             calculate_energy(number_of_clusters, round); 
             total_energy = total_energy + total_energy_per_round(round); 
             total_enerdy_edit.String = num2str(total_energy);
-            disp(total_energy_per_round);
-            disp(node_energy_per_round);
-            disp(total_energy);
-            disp(cluster_energy_per_round);
-            disp(total_cluster_energy);
+            %disp(total_energy_per_round);
+            %disp(node_energy_per_round);
+            %disp(total_energy);
+            %disp(cluster_energy_per_round);
+            %disp(total_cluster_energy);
             %nodes_alive_edit.String =  
             %nodes_dead_edit.String =   
             pause(2);
@@ -728,9 +703,8 @@ end
          hold(ax1, 'on');         
          for i = 1:n
              ch_x = nodes(CHs(i,1), 1);
-             ch_y = nodes(CHs(i,1), 2);
-                 
-             handler_CHs = [handler_CHs ,plot(ax1, ch_x, ch_y, 'b*', 'LineWidth', 2, 'MarkerSize',15, 'MarkerEdgeColor','b','MarkerFaceColor', 'b')];
+             ch_y = nodes(CHs(i,1), 2);                 
+             handler_CHs = [handler_CHs, plot(ax1, ch_x, ch_y, 'b*', 'LineWidth', 2, 'MarkerSize',15, 'MarkerEdgeColor','b','MarkerFaceColor', 'b')];
              handler_CH_lines = [handler_CH_lines, plot([ch_x, bs_x], [ch_y, bs_y], '--r')];    
              for j = 2:n
                  if(j > i)
