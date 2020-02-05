@@ -4,7 +4,7 @@ clear all
 
 %%%%%Window%%%%%
 main_window = figure('Name', 'Cluster Analyser', 'Units', 'Normalized', 'Position', [0, 0, 0.6, 0.9], 'Visible', 'off', 'MenuBar', 'none', 'Resize', 'on');
-
+datacursormode on;
 
 %%%%%GUI features (buttons etc.)%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Network panel%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  
@@ -208,6 +208,8 @@ total_energy_per_round = zeros(n_rounds,1);
 node_energy_per_round = zeros(n_nodes, n_rounds);
 cluster_energy_per_round = [];
 total_cluster_energy = [];
+nodes_alive = zeros(n_rounds,1);
+nodes_dead = zeros(n_rounds,1);
 handler_text = [];
 handler_CH_lines = [];
 handler_lines = [];
@@ -603,7 +605,11 @@ end
             end
         end
     end
-
+    function check_node_status()
+        nodes(nodes(:,6) <= 0, 5) = 0;
+        disp(nodes);
+        disp(nodes(nodes(:,5) == 0, :));
+    end
     function simulate(src, event)
 %       Initialization step:
 % Create static clusters based on node information (clustering techniques)
@@ -638,13 +644,14 @@ end
             calculate_energy(number_of_clusters, round); 
             total_energy(round) = sum(total_energy_per_round); 
             total_enerdy_edit.String = num2str(sum(total_energy));
+            check_node_status();
             %disp(total_energy_per_round);
             %disp(node_energy_per_round);
             %disp(total_energy);
             %disp(cluster_energy_per_round);
             %disp(total_cluster_energy);
-            %nodes_alive_edit.String =  
-            %nodes_dead_edit.String =   
+            nodes_alive_edit.String = num2str(size(nodes(nodes(:,5) == 1,1),1));
+            nodes_dead_edit.String = num2str(size(nodes(nodes(:,5) == 0,1), 1));  
             pause(2);
             
         end
@@ -714,6 +721,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%STATISTICS%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      function reset_stats(src, event)
+        init_energy = str2double(get(energy_node_edit, 'String'));%2 or 0.5
         nodes(:,5) = 1;
         nodes(:,6) = init_energy;
         nodes(:,7) = 0;
@@ -724,9 +732,12 @@ end
         cluster_energy_per_round = zeros(n_clusters, n_rounds);
         total_cluster_energy = zeros(n_clusters,n_rounds);
         num_of_rounds_edit.String =  num2str(n_rounds);
-        total_enerdy_edit.String = num2str(sum(total_energy));
-        %nodes_alive_edit.String =  
-        %nodes_dead_edit.String =  
+        total_enerdy_edit.String = num2str(sum(total_energy));      
+        nodes_alive_edit.String = num2str(size(nodes(nodes(:,5) == 1,1),1));
+        nodes_dead_edit.String = num2str(size(nodes(nodes(:,5) == 0,1), 1)); 
+        nodes_alive = zeros(n_rounds,1);
+        nodes_alive(:,1) = n_nodes;
+        nodes_dead = zeros(n_rounds,1);
      end
 
     function save_stat(src, event)
@@ -820,7 +831,9 @@ end
                 fileName = strcat(name, '_', fileName, '.txt');
                 dlmwrite(fullfile(folder, fileName), total_cluster_energy, 'delimiter', ' ');
             case 'Nodes alive per round'
+                
             case 'Nodes dead per round'
+                
             end
          
     end
