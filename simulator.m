@@ -449,7 +449,7 @@ n_clusters = 0;
                     nodes(cluster(j,3), 6) = nodes(cluster(j,3), 6) - Etotal;
                     nodes(cluster(j,3), 7) = nodes(cluster(j,3), 7) + Etotal;
                     cluster_energy_per_round(i, round) = cluster_energy_per_round(i, round) + Etotal;
-                    total_cluster_energy(i) = total_cluster_energy(i) + Etotal;
+                    total_cluster_energy(i, round) = sum(cluster_energy_per_round(i,:));
                 else                    
                     Erx = (number_of_points - 1)*(msg + msg_header_size)*(Eelec) + number_of_points*(msg + msg_header_size)*(EDA);%%%EDA check if header is required
                     CHs(i,6) = number_of_points*msg;
@@ -459,7 +459,7 @@ n_clusters = 0;
                     nodes(cluster(j,3), 6) = nodes(cluster(j,3), 6) - Etotal;
                     nodes(cluster(j,3), 7) = nodes(cluster(j,3), 7) + Etotal;
                     cluster_energy_per_round(i, round) = cluster_energy_per_round(i, round) + Etotal;
-                    total_cluster_energy(i) = total_cluster_energy(i) + Etotal;
+                    total_cluster_energy(i, round) = sum(cluster_energy_per_round(i,:));
                 end
             end   
         end   
@@ -528,7 +528,7 @@ n_clusters = 0;
                             nodes(CHs(id,1), 6) = nodes(CHs(id,1), 6) - Etotal;
                             nodes(CHs(id,1), 7) = nodes(CHs(id,1), 7) + Etotal;
                             cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
-                            total_cluster_energy(id) = total_cluster_energy(id) + Etotal;
+                            total_cluster_energy(i, round) = sum(cluster_energy_per_round(i,:));
                             disp("Etx");
                             disp(Etx);
                             if(next_id ~= n+1) 
@@ -549,7 +549,7 @@ n_clusters = 0;
                             nodes(CHs(id,1), 6) = nodes(CHs(id,1), 6) - Etotal;
                             nodes(CHs(id,1), 7) = nodes(CHs(id,1), 7) + Etotal;
                             cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
-                            total_cluster_energy(id) = total_cluster_energy(id) + Etotal;
+                            total_cluster_energy(i, round) = sum(cluster_energy_per_round(i,:));
                             disp("Etx");
                             disp(Etx);
                             disp("Erx");
@@ -722,7 +722,7 @@ end
         total_energy_per_round = zeros(n_rounds,1);
         node_energy_per_round = zeros(n_nodes, n_rounds);
         cluster_energy_per_round = zeros(n_clusters, n_rounds);
-        total_cluster_energy = zeros(n_clusters,1);
+        total_cluster_energy = zeros(n_clusters,n_rounds);
         num_of_rounds_edit.String =  num2str(n_rounds);
         total_enerdy_edit.String = num2str(sum(total_energy));
         %nodes_alive_edit.String =  
@@ -738,37 +738,90 @@ end
         value = get(stat_save_method, 'Value');
         f_new = figure('Visible', 'on');
         f_new.InvertHardcopy = 'off';
-         switch save_selected{value}
-             case 'Total energy consumption'
+        name = save_selected{value};
+        switch name
+            case 'Total energy consumption'
                 ax_new = plot(1:n_rounds, total_energy(:,1), 'Linewidth', 2);
                 hold on;
-                name = 'Total energy consumption';
                 title(name);
-                xlabel 'Rounds';
+                xlabel 'Round';
                 ylabel 'Total Energy(J)';
                 %%Table saving template%%
-                items = get(file_save_method,'String');
-                index_selected = get(file_save_method,'Value');
-                save_selected = items{index_selected};
                 fileName = get_filename_for_saving();
                 folder = pwd;
                 fileName = strcat(name, '_', fileName, '.txt');
                 dlmwrite(fullfile(folder, fileName), total_energy, 'delimiter', ' ');
                 %%%%%%%%%%%%%%%%%%%%%%%%%
-             case 'Energy consumption per round'  
+            case 'Energy consumption per round'  
                 ax_new = plot(1:n_rounds, total_energy_per_round(:,1), 'Linewidth', 2);
                 hold on;
-                name = 'Energy consumption per round';
+                title(name);
+                xlabel 'Round';
+                ylabel 'Energy(J)';
+                %%Table saving template%%
+                fileName = get_filename_for_saving();
+                folder = pwd;
+                fileName = strcat(name, '_', fileName, '.txt');
+                dlmwrite(fullfile(folder, fileName), total_energy_per_round, 'delimiter', ' ');
+                %%%%%%%%%%%%%%%%%%%%%%%%%
+            case 'Node energy consumption per round'
+                ax_new = plot(1:n_rounds, node_energy_per_round, 'Linewidth', 2);
+                hold on;
+                l(:,1) = [1:n_nodes];
+                l = arrayfun(@num2str, l, 'UniformOutput', false); 
+                legend(l);
+                title(name);
+                xlabel 'Node ID';
+                ylabel 'Energy(J)';
+                %%Table saving template%%
+                fileName = get_filename_for_saving();
+                folder = pwd;
+                fileName = strcat(name, '_', fileName, '.txt');
+                dlmwrite(fullfile(folder, fileName), node_energy_per_round, 'delimiter', ' ');
+                %%%%%%%%%%%%%%%%%%%%%%%%%
+            case 'Average node energy consumption'
+                ax_new = plot(1:n_rounds, total_energy_per_round(:,1)/n_nodes, 'Linewidth', 2);
+                hold on;
                 title(name);
                 xlabel 'Rounds';
                 ylabel 'Energy(J)';
-             case 'Node energy consumption per round'
-             case 'Average node energy consumption'
-             case 'Cluster energy consumption per round'
-             case 'Total energy consumption per cluster'
-             case 'Nodes alive per round'
-             case 'Nodes dead per round'
-         end
+                %%Table saving template%%
+                fileName = get_filename_for_saving();
+                folder = pwd;
+                fileName = strcat(name, '_', fileName, '.txt');
+                dlmwrite(fullfile(folder, fileName), total_energy_per_round/n_nodes, 'delimiter', ' ');
+            %%%%%%%%%%%%%%%%%%%%%%%%%
+            case 'Cluster energy consumption per round'
+                ax_new = plot(1:n_rounds, cluster_energy_per_round, 'Linewidth', 2);
+                hold on;
+                l(:,1) = [1:n_clusters];
+                l = arrayfun(@num2str, l); 
+                legend(l);
+                title(name);
+                xlabel 'Rounds';
+                ylabel 'Energy(J)';
+                %%Table saving template%%
+                fileName = get_filename_for_saving();
+                folder = pwd;
+                fileName = strcat(name, '_', fileName, '.txt');
+                dlmwrite(fullfile(folder, fileName), cluster_energy_per_round, 'delimiter', ' ');
+            case 'Total energy consumption per cluster'
+                ax_new = plot(1:n_rounds, total_cluster_energy, 'Linewidth', 2);
+                l(:,1) = [1:n_clusters];
+                l = arrayfun(@num2str, l); 
+                legend(l);
+                hold on;
+                title(name);
+                xlabel 'Rounds';
+                ylabel 'Energy(J)';
+                %%Table saving template%%
+                fileName = get_filename_for_saving();
+                folder = pwd;
+                fileName = strcat(name, '_', fileName, '.txt');
+                dlmwrite(fullfile(folder, fileName), total_cluster_energy, 'delimiter', ' ');
+            case 'Nodes alive per round'
+            case 'Nodes dead per round'
+            end
          
     end
 
