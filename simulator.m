@@ -54,9 +54,10 @@ uicontrol('Parent', file_panel,'Style', 'pushbutton', 'String', 'Statistics', 'U
         'Position', [0.05, 0.4, 0.4, 0.2], 'FontWeight', 'bold' ,'FontSize' , 11,'Callback', @save_stat);    
 file_save_method = uicontrol('Parent', file_panel, 'Style', 'popupmenu', 'String', {'Binary (.mat)', 'Text (.txt)'}, 'Units', 'Normalized', ...
         'FontAngle','italic','FontSize' , 11 ,'Position', [0.45, 0.8, 0.55, 0.2]);    
-graph_save_method = uicontrol('Parent', file_panel,'Style', 'popupmenu', 'String', {'Network graph','Input graph', 'Both graphs'}, 'Units', 'Normalized', ...
-        'FontAngle','italic','FontSize' , 11 ,'Position', [0.45, 0.6, 0.55, 0.2]);
-stat_save_method = uicontrol('Parent', file_panel,'Style', 'popupmenu', 'String', {'Network graph','Input graph', 'Both graphs'}, 'Units', 'Normalized', ...
+stat_save_method = uicontrol('Parent', file_panel,'Style', 'popupmenu', 'String',...
+        {'Total energy consumption','Energy consumption per round', 'Node energy consumption per round', 'Average node energy consumption', 'Cluster energy consumption per round', ...
+        'Total energy consumption per cluster', 'Nodes alive per round', 'Nodes dead per round' }, ...
+        'Units', 'Normalized', ...
         'FontAngle','italic','FontSize' , 11 ,'Position', [0.45, 0.4, 0.55, 0.2]);
 
     
@@ -202,7 +203,7 @@ output_matrix = [];
 centroids = [];
 cluster_graph = [];
 CHs = [];
-total_energy = 0;
+total_energy = zeros(n_rounds,1);
 total_energy_per_round = zeros(n_rounds,1);
 node_energy_per_round = zeros(n_nodes, n_rounds);
 cluster_energy_per_round = [];
@@ -268,17 +269,23 @@ n_clusters = 0;
         [filename, pathname] = uigetfile('*.*');
         full_filename = [pathname filename];
         [pathstr, filename_for_saving, ext] = fileparts(full_filename);
-        nodes = load(full_filename);
+        
+        tmp = load(full_filename);
+        disp(tmp);
+        n_nodes = size(tmp,1);
+        disp(n_nodes);
+        nodes = zeros(n_nodes, 9);
+        nodes(:,1:2) = tmp(:,1:2);
+        disp(nodes);
         switch ext
             case ".mat"
-                nodes = nodes.D; %specify matrix name that being loaded from file 
+                nodes = tmp.D; %specify matrix name that being loaded from file 
         end
         
-        n_nodes = size(nodes(:,1));
-        n_nodes.String =  num2str(n_nodes);
+        num_of_nodes_edit.String =  num2str(n_nodes);
         
-        area_x = max(nodes(:,1));
-        area_y = max(nodes(:,2));
+        area_x = round(max(nodes(:,1)), -1);
+        area_y = round(max(nodes(:,2)), -1);
         area_size_x_edit.String = num2str(area_x);
         area_size_y_edit.String = num2str(area_y);
         
@@ -287,6 +294,16 @@ n_clusters = 0;
         base_station_x_edit.String = num2str(bs_x);
         base_station_y_edit.String = num2str(bs_y);
         
+        grid(ax1, 'on');
+        %axis square;
+        title(ax1, 'Network','FontWeight','bold');
+        ylabel('Y (m)','FontSize',10, 'FontWeight', 'bold');
+        xlabel('X (m)','FontSize',10, 'FontWeight', 'bold');
+        tb1 = axtoolbar(ax1,'default');
+        tb1.Visible = 'on'; 
+        xticklabels('auto');
+   
+        hold(ax1, 'on');
         cla; 
         handler_base = plot(ax1, bs_x, bs_y, 'bs',...
             'LineWidth',2,...
@@ -294,71 +311,55 @@ n_clusters = 0;
             'MarkerEdgeColor','b',...
             'MarkerFaceColor', 'b');  
         handler_nodes = scatter(ax1, nodes(:,1), nodes(:,2), 'ko' , 'filled');
+        hold(ax1, 'off');
+        for i = 1:n_nodes
+            nodes(i,3) = i;
+            nodes(i,4) = 0;
+            nodes(i,5) = 1;
+            nodes(i,6) = init_energy;
+        end
+        
     end
     
     function fn = get_filename_for_saving()
         current_date = date;
         method = get(cluster_method_chosen, 'String');
         value = get(cluster_method_chosen, 'Value');
-        number_of_clusters = get(cluster_num_edt, 'String');
-        number_of_neighbours = get(min_neigh, 'String');
-        eps = get(epsilon, 'String');
+        number_of_clusters = get(cluster_num_edit, 'String');   
         
-        switch method{value}
-            case 'DBSCAN'
-                number_of_clusters = strcat('eps_', eps, '_neighbours_', number_of_neighbours);
-        end
-        
-        fn = strcat(filename_for_saving,'_',method{value},'_params:',number_of_clusters,'_date:',current_date);
+        %fn = strcat(filename_for_saving,'_',method{value},'_params:',number_of_clusters,'_date:',current_date);
+         fn = strcat(method{value},'_params_',number_of_clusters,'_date_',current_date);
     end
 
     function save_file(src, event)
         
-        items = get(save_method_chosen2,'String');
-        index_selected = get(save_method_chosen2,'Value');
+        items = get(file_save_method,'String');
+        index_selected = get(file_save_method,'Value');
         save_selected = items{index_selected};
         fileName = get_filename_for_saving();
-        
+        folder = pwd;
         switch save_selected
             case 'Text (.txt)'
                 fileName = strcat(fileName, '.txt');
-                dlmwrite(fileName, output_matrix, 'delimiter', ' ');
+                dlmwrite(fullfile(folder, fileName), nodes(:,1:2), 'delimiter', ' ');
             otherwise
                 fileName = strcat(fileName, '.mat');
-                X = output_matrix;
-                save(fileName, 'X');
+                D = nodes(:,1:2);
+                save(fileName, 'D');
         end
         
         msgbox({'Your file was saved:'; fileName}, 'Success');
        
     end
+
     function save_graph(src, event)
         
+        folder = pwd;
         graphName = get_filename_for_saving();
-        
-        items = get(save_method_chosen1,'String');
-        index_selected = get(save_method_chosen1,'Value');
-        save_selected = items{index_selected};
-        switch save_selected
-            case 'Both graphs'
-                fig = main_window;
-                fig.InvertHardcopy = 'off';
-                graphName = strcat(graphName,'_', save_selected);
-                print(graphName,'-dpng','-noui');
-            otherwise
-                if(strcmp(save_selected,'Output graph'))
-                    ax = ax2;
-                else
-                    ax = ax1;
-                end
-                f_new = figure('Visible', 'off');
-                f_new.InvertHardcopy = 'off';
-                ax_new = copyobj(ax, f_new);
-                set(ax_new,'Position','default');
-                graphName = strcat(graphName,'_', save_selected);
-                print(f_new, graphName,'-dpng');
-                close(f_new);
-        end
+        fig = main_window;
+        fig.InvertHardcopy = 'off';
+        graphName = fullfile(folder, graphName);
+        print(graphName,'-dpng','-noui');
         
         msgbox({'Your graph was saved:'; graphName}, 'Success');
     end
@@ -570,22 +571,6 @@ n_clusters = 0;
         end
 end
 
-    function reset_stats(src, event)
-        nodes(:,5) = 1;
-        nodes(:,6) = init_energy;
-        nodes(:,7) = 0;
-        nodes(:,8) = 0;
-        total_energy = 0;
-        total_energy_per_round = zeros(n_rounds,1);
-        node_energy_per_round = zeros(n_nodes, n_rounds);
-        cluster_energy_per_round = zeros(n_clusters, n_rounds);
-        total_cluster_energy = zeros(n_clusters,1);
-        num_of_rounds_edit.String =  num2str(n_rounds);
-        total_enerdy_edit.String = num2str(total_energy);
-        %nodes_alive_edit.String =  
-        %nodes_dead_edit.String =  
-    end
-
     function init_cluster_ids(n)     
         for i = 1:n
             cluster = nodes(nodes(:,9) == i, 1:3);
@@ -651,8 +636,8 @@ end
             draw_cluster_lines(number_of_clusters);
             draw_lines(number_of_clusters);
             calculate_energy(number_of_clusters, round); 
-            total_energy = total_energy + total_energy_per_round(round); 
-            total_enerdy_edit.String = num2str(total_energy);
+            total_energy(round) = sum(total_energy_per_round); 
+            total_enerdy_edit.String = num2str(sum(total_energy));
             %disp(total_energy_per_round);
             %disp(node_energy_per_round);
             %disp(total_energy);
@@ -667,10 +652,6 @@ end
     end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%DRAWING%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% handler_text = [];
-% handler_CH_lines = [];
-% handler_lines = [];
-% handler_CHs = [];
 
     function draw(centroids, n_clusters)
         cla;
@@ -731,5 +712,65 @@ end
          hold(ax1, 'off');
     end
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%STATISTICS%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+     function reset_stats(src, event)
+        nodes(:,5) = 1;
+        nodes(:,6) = init_energy;
+        nodes(:,7) = 0;
+        nodes(:,8) = 0;
+        total_energy = zeros(n_rounds,1);
+        total_energy_per_round = zeros(n_rounds,1);
+        node_energy_per_round = zeros(n_nodes, n_rounds);
+        cluster_energy_per_round = zeros(n_clusters, n_rounds);
+        total_cluster_energy = zeros(n_clusters,1);
+        num_of_rounds_edit.String =  num2str(n_rounds);
+        total_enerdy_edit.String = num2str(sum(total_energy));
+        %nodes_alive_edit.String =  
+        %nodes_dead_edit.String =  
+     end
+
+    function save_stat(src, event)
+    %'Total energy consumption','Energy consumption per round', 
+    %'Node energy consumption per round', 'Average node energy consumption', 'Cluster energy consumption per round'
+    %'Total energy consumption per cluster', 'Nodes alive per round', 'Nodes dead per round'
+    %Have to save respective table
+        save_selected = get(stat_save_method, 'String');
+        value = get(stat_save_method, 'Value');
+        f_new = figure('Visible', 'on');
+        f_new.InvertHardcopy = 'off';
+         switch save_selected{value}
+             case 'Total energy consumption'
+                ax_new = plot(1:n_rounds, total_energy(:,1), 'Linewidth', 2);
+                hold on;
+                name = 'Total energy consumption';
+                title(name);
+                xlabel 'Rounds';
+                ylabel 'Total Energy(J)';
+                %%Table saving template%%
+                items = get(file_save_method,'String');
+                index_selected = get(file_save_method,'Value');
+                save_selected = items{index_selected};
+                fileName = get_filename_for_saving();
+                folder = pwd;
+                fileName = strcat(name, '_', fileName, '.txt');
+                dlmwrite(fullfile(folder, fileName), total_energy, 'delimiter', ' ');
+                %%%%%%%%%%%%%%%%%%%%%%%%%
+             case 'Energy consumption per round'  
+                ax_new = plot(1:n_rounds, total_energy_per_round(:,1), 'Linewidth', 2);
+                hold on;
+                name = 'Energy consumption per round';
+                title(name);
+                xlabel 'Rounds';
+                ylabel 'Energy(J)';
+             case 'Node energy consumption per round'
+             case 'Average node energy consumption'
+             case 'Cluster energy consumption per round'
+             case 'Total energy consumption per cluster'
+             case 'Nodes alive per round'
+             case 'Nodes dead per round'
+         end
+         
+    end
+
+
 end
