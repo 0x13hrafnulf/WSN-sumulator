@@ -1,4 +1,4 @@
-function simulator
+function simulatorSP
 clc
 clear all
 
@@ -199,6 +199,7 @@ movegui(main_window, 'center');
 set(main_window, 'Visible', 'on');
 full_filename = [];
 filename_for_saving = [];
+output_matrix = [];
 centroids = [];
 cluster_graph = [];
 CHs = [];
@@ -212,7 +213,6 @@ nodes_dead = zeros(n_rounds,1);
 handler_text = [];
 handler_CH_lines = [];
 handler_lines = [];
-handler_nodes = [];
 handler_CHs = [];
 n_clusters = 0;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
@@ -476,7 +476,7 @@ n_clusters = 0;
         end   
         check_node_status(n);
         %%%%CH weigths%%%%
-        Points = [CHs(:,4:5); bs_x, bs_y];
+        Points = [centroids(:,1:2); bs_x, bs_y];
         Dist = pdist2(Points, Points);
         Weights = Dist;
         for i=1:n
@@ -651,7 +651,7 @@ end
             end
          end
         hold(ax1, 'on');   
-            handler_nodes = [handler_nodes, plot(ax1, nodes(nodes(:,5) == 0, 1), nodes(nodes(:,5) == 0 , 2), 'kx', 'LineWidth', 2, 'MarkerSize',12, 'MarkerEdgeColor','k','MarkerFaceColor', 'k')];
+            handler_CHs = [handler_CHs, plot(ax1, nodes(nodes(:,5) == 0, 1), nodes(nodes(:,5) == 0 , 2), 'kx', 'LineWidth', 2, 'MarkerSize',12, 'MarkerEdgeColor','k','MarkerFaceColor', 'k')];
         hold(ax1, 'off');
         disp(CHs);
     end
@@ -683,8 +683,7 @@ end
                 delete(handler_CHs);
                 delete(handler_CH_lines);
                 delete(handler_lines);
-                delete(handler_text);
-                delete(handler_nodes);
+                delete(handler_text);   
                 init_CHs(n_clusters);    
                 %draw_cluster_lines(number_of_clusters);
                 draw_lines(n_clusters);
@@ -781,7 +780,7 @@ end
             if(next_id ~= n+1)   
                 handler_CH_lines = [handler_CH_lines, plot([CHs(id,4), CHs(next_id,4)], [CHs(id,5), CHs(next_id,5)],'b', 'LineWidth', 2.5)];
             else
-                handler_CH_lines = [handler_CH_lines, plot([CHs(id,4), bs_x], [CHs(id,5), bs_y],'r', 'LineWidth', 2.5)];
+                handler_CH_lines = [handler_CH_lines, plot([CHs(id,4), bs_x], [CHs(id,5), bs_y],'b', 'LineWidth', 2.5)];
             end
         end
         hold(ax1, 'off');
