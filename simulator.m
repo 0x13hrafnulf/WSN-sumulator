@@ -461,8 +461,8 @@ n_clusters = 0;
                         cluster_energy_per_round(i, round) = cluster_energy_per_round(i, round) + Etotal;
                         total_cluster_energy(i, round) = sum(cluster_energy_per_round(i,:));
                     elseif(cluster(j,3) == CHs(i,1) && cluster(j, 5) == 1)                    
-                        Erx = (number_of_points - 1 - (number_of_points - sum(cluster(:,5))))*(msg + msg_header_size)*(Eelec) + (number_of_points - sum(cluster(:,5)))*(msg + msg_header_size)*(EDA);%%%EDA check if header is required
-                        CHs(i,6) = (number_of_points - sum(cluster(:,5)))*msg;
+                        Erx = (sum(cluster(:,5)) - 1)*(msg + msg_header_size)*(Eelec) + (sum(cluster(:,5)))*(msg + msg_header_size)*(EDA);%%%EDA check if header is required
+                        CHs(i,6) = (sum(cluster(:,5)))*msg;
                         Etotal = Erx;
                         total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
                         node_energy_per_round(cluster(j,3), round) = Etotal;

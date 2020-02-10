@@ -1,4 +1,4 @@
-function simulatorSP
+function simulatorSC
 clc
 clear all
 
@@ -180,7 +180,7 @@ init_energy = str2double(get(energy_node_edit, 'String'));%2 or 0.5
 msg_body_size = 8 * str2double(get(msg_body_size_edit, 'String')); %lbody = 250 bytes, 2000 bits
 msg_header_size = 8 * str2double(get(msg_header_size_edit, 'String')); %lheader = 43 bytes, 344 bits
 
-nodes = zeros(n_nodes, 9); %x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label
+nodes = zeros(n_nodes, 10); %x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label
 for nd = 1:n_nodes
     
     nodes(nd,1) = rand(1,1)*area_x;	
@@ -476,10 +476,8 @@ n_clusters = 0;
         end   
         check_node_status(n);
         %%%%CH weigths%%%%
-        Points = [centroids(:,1:2); bs_x, bs_y];
+        Points = [CHs(:,4:5); bs_x, bs_y];
         Dist = pdist2(Points, Points);
-        Points1 = [CHs(:,4:5); bs_x, bs_y];
-        Dist1 = pdist2(Points1, Points1);
         Weights = Dist;
         for i=1:n
             if(CHs(i,7) == 0) 
@@ -557,10 +555,10 @@ n_clusters = 0;
                             Etotal = 0;
                             next_id = path(j + 1);
                             if(id == i)
-                                if(d0 > Dist1(id,next_id))
-                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Efs*Dist1(id,next_id)^2;     
+                                if(d0 > Dist(id,next_id))
+                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Efs*Dist(id,next_id)^2;     
                                 else 
-                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Emp*Dist1(id,next_id)^4;   
+                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Emp*Dist(id,next_id)^4;   
                                 end
                                 Etotal = Etx;
                                 total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
@@ -573,10 +571,10 @@ n_clusters = 0;
                                    msg_s = msg_s + CHs(next_id, 6);      
                                 end
                             else                         
-                                if(d0 > Dist1(id,next_id))
-                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Efs*Dist1(id, next_id)^2;
+                                if(d0 > Dist(id,next_id))
+                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Efs*Dist(id, next_id)^2;
                                 else 
-                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Emp*Dist1(id, next_id)^4;    
+                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Emp*Dist(id, next_id)^4;    
                                 end 
                                 Erx = (msg_s - CHs(id, 6) + msg_header_size)*(Eelec) + EDA * (msg_s + msg_header_size);
                                 Etotal = Etx+Erx;
@@ -600,7 +598,7 @@ n_clusters = 0;
                     disp(d);
                 end
         end
-end
+    end
 
     function init_cluster_ids(n)     
         for i = 1:n
@@ -608,42 +606,33 @@ end
             number_of_points = size(cluster,1);
             CHs(i,2) = number_of_points;    
             for j = 1:number_of_points
-               nodes(cluster(j,3),4) = j;         
+               d = ((cluster(j,1) - centroids(i,1))^2 + (cluster(j,2) - centroids(i,2))^2)^0.5;
+               nodes(cluster(j,3),4) = j;
+               nodes(cluster(j,3),10) = d;
             end
         end 
     end
 
     function init_CHs(n)
+        
         for i = 1:n
             if(CHs(i,7) == 0) 
                 continue;
             else
-                cluster = nodes(nodes(:,9) == i, 1:5);
+                cluster = nodes(nodes(:,9) == i, 1:10);
                 number_of_points = CHs(i,2);
-                for j = 1:number_of_points
-                    if(CHs(i,3) == cluster(j, 4) && cluster(j, 5) == 1)
-                        CHs(i,1) =  cluster(j, 3);
-                        CHs(i,4) = cluster(j, 1);
-                        CHs(i,5) = cluster(j, 2);
-                        nodes(cluster(j,3), 8) = 1;   
-                    elseif(CHs(i,3) == cluster(j, 4) && cluster(j, 5) == 0)
-                        nodes(cluster(j,3), 8) = 0;
-                        CHs(i,3) = CHs(i,3) + 1;
-                        j = j + 1;
-                    else
-                        nodes(cluster(j,3), 8) = 0;
-                    end
-                end
+                
+                mindist = min(cluster(:,10));
+                CHs(i,1) = nodes(nodes(:,10) == mindist, 3);
+                CHs(i,4) = nodes(nodes(:,10) == mindist, 1);
+                CHs(i,5) = nodes(nodes(:,10) == mindist, 2);
             end
-            if(CHs(i,3) < CHs(i,2)) 
-                CHs(i,3) = CHs(i,3) + 1;
-            else
-                CHs(i,3) = 1;
-            end
-        end
+        end  
     end
+
     function check_node_status(n)
         nodes(nodes(:,6) <= 0, 5) = 0;
+        nodes(nodes(:,5) == 0,10) = Inf;
          for i = 1:n
             cluster = nodes(nodes(:,9) == i, 1:5);
             number_of_points = CHs(i,2);
