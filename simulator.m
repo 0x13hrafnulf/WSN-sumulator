@@ -243,7 +243,44 @@ n_clusters = 0;
             nodes(i,4) = 0;
             nodes(i,5) = 1;
             nodes(i,6) = init_energy;
-        end   
+        end
+        s_method = get(placement_method, 'String');
+        s_value = get(placement_method, 'Value');
+        %'Random', 'Square', 'Triangular', 'Hexagon', 'Tri-hexagon'
+        switch s_method{s_value}
+            case 'Random'
+                for i = 1:n_nodes
+                    nodes(i,1) = rand(1,1)*area_x;	
+                    nodes(i,2) = rand(1,1)*area_y;
+                end
+            case 'Square'
+                sz = max(area_x, area_y);
+                gr = ceil((sqrt(n_nodes)));
+                grid_sz = sz / gr;
+                disp(gr);
+                disp(grid_sz);
+                count_x = 1;
+                count_y = 1;
+                for i = 1:n_nodes
+                    if(mod(i, gr) == 0)
+                        nodes(i,1) = count_x * grid_sz;
+                        nodes(i,2) = count_y * grid_sz;
+                        count_y = count_y + 1;
+                        count_x = 1;     
+                    else
+                        nodes(i,1) = count_x * grid_sz;
+                        nodes(i,2) = count_y * grid_sz;
+                        count_x = count_x + 1;
+                    end
+                end
+            case 'Triangular'
+                
+            case 'Hexagon'
+                
+            case 'Tri-hexagon'
+        
+        end
+   
         handler_base = plot(ax1, bs_x, bs_y, 'bs',...
             'LineWidth',2,...
             'MarkerSize',15,...
