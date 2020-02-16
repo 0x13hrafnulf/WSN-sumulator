@@ -41,7 +41,7 @@ uicontrol('Parent', network_panel, 'Style', 'pushbutton', 'String', 'Open file',
 uicontrol('Parent', network_panel, 'Style', 'text', 'String', 'Node placement', 'Units', 'Normalized', ...
         'FontWeight', 'bold' ,'FontSize' , 10,'Position', [0.0, 0.2, 0.58, 0.12]);    
 placement_method = uicontrol('Parent', network_panel, 'Style', 'popupmenu', 'String', { 'Random', 'Square', 'Triangular', 'Hexagon', 'Tri-hexagon'}, 'Units', 'Normalized', ...
-        'FontWeight','bold','FontAngle','italic','FontSize' , 10,'Position', [0.58, 0.2, 0.38, 0.15], 'Callback', @placement_chosen);
+        'FontWeight','bold','FontAngle','italic','FontSize' , 10,'Position', [0.58, 0.2, 0.38, 0.15]);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%File panel%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%   
 
 file_panel = uipanel('Parent', main_window, 'Units', 'Normalized', ...
@@ -257,8 +257,6 @@ n_clusters = 0;
                 sz = max(area_x, area_y);
                 gr = ceil((sqrt(n_nodes)));
                 grid_sz = sz / gr;
-                disp(gr);
-                disp(grid_sz);
                 count_x = 1;
                 count_y = 1;
                 for i = 1:n_nodes
@@ -274,11 +272,95 @@ n_clusters = 0;
                     end
                 end
             case 'Triangular'
-                
+                sz = max(area_x, area_y);
+                gr = ceil((sqrt(n_nodes)));
+                grid_sz = sz / gr;
+                count_x = 1;
+                count_y = 1;
+                tri = 0;
+                for i = 1:n_nodes 
+                    if(tri == 1)     
+                        nodes(i,1) = count_x * grid_sz + 0.5 * grid_sz;
+                        nodes(i,2) = count_y * grid_sz;
+                        count_x = count_x + 1;
+                        if(mod(count_x, gr - 1) == 0) 
+                            tri = 0;
+                            count_y = count_y + 1;
+                            count_x = 1;
+                        end                        
+                    elseif(tri == 0)
+                        nodes(i,1) = count_x * grid_sz;
+                        nodes(i,2) = count_y * grid_sz;
+                        count_x = count_x + 1;
+                        if(mod(count_x, gr) == 0) 
+                            tri = 1;
+                            count_y = count_y + 1;
+                            count_x = 1;
+                        end
+                    end
+                          
+                end
             case 'Hexagon'
-                
+                sz = max(area_x, area_y);
+                gr = ceil((sqrt(n_nodes)));
+                grid_sz = sz / gr;
+                count_x = 1;
+                count_y = 1;
+                hex = 0;
+                tri = 0;
+                for i = 1:n_nodes  
+                    if(hex == 1)     
+                        if(tri == 0)     
+                            nodes(i,1) = count_x * grid_sz - 0.5 * grid_sz;
+                            nodes(i,2) = count_y * grid_sz;
+                            count_x = count_x + 1;
+                            if(mod(count_x, gr + 1) == 0) 
+                                tri = 1;
+                                count_y = count_y + 1;
+                                count_x = 1;
+                            end                        
+                        elseif(tri == 1)
+                            nodes(i,1) = count_x * grid_sz;
+                            nodes(i,2) = count_y * grid_sz;
+                            count_x = count_x + 1;
+                            if(mod(count_x, gr) == 0) 
+                                tri = 0;
+                                count_y = count_y + 1;
+                                count_x = 1;
+                                hex = 0;
+                            end
+                       end               
+                    elseif(hex == 0)
+                        if(tri == 1)     
+                            nodes(i,1) = count_x * grid_sz - 0.5 * grid_sz;
+                            nodes(i,2) = count_y * grid_sz;
+                            count_x = count_x + 1;
+                            if(mod(count_x, gr + 1) == 0) 
+                                tri = 0;
+                                count_y = count_y + 1;
+                                count_x = 1;
+                                hex = 1;
+                            end                        
+                        elseif(tri == 0)
+                            nodes(i,1) = count_x * grid_sz;
+                            nodes(i,2) = count_y * grid_sz;
+                            count_x = count_x + 1;
+                            if(mod(count_x, gr) == 0) 
+                                tri = 1;
+                                count_y = count_y + 1;
+                                count_x = 1;
+                            end
+                       end 
+                    end
+                end
             case 'Tri-hexagon'
-        
+                sz = max(area_x, area_y);
+                gr = ceil((sqrt(n_nodes)));
+                grid_sz = sz / gr;
+                count_x = 1;
+                count_y = 1;
+                trihex = 1;
+                
         end
    
         handler_base = plot(ax1, bs_x, bs_y, 'bs',...
