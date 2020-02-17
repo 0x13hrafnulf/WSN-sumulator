@@ -3,7 +3,7 @@ clc
 clear all
 
 %%%%%Window%%%%%
-main_window = figure('Name', 'Cluster Analyser', 'Units', 'Normalized', 'Position', [0, 0, 0.6, 0.9], 'Visible', 'off', 'MenuBar', 'none', 'Resize', 'on');
+main_window = figure('Name', 'SimulatorSP', 'Units', 'Normalized', 'Position', [0, 0, 0.6, 0.9], 'Visible', 'off', 'MenuBar', 'none', 'Resize', 'on');
 datacursormode on;
 
 %%%%%GUI features (buttons etc.)%%%%%

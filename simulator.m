@@ -3,7 +3,7 @@ clc
 clear all
 
 %%%%%Window%%%%%
-main_window = figure('Name', 'Cluster Analyser', 'Units', 'Normalized', 'Position', [0, 0, 0.6, 0.9], 'Visible', 'off', 'MenuBar', 'none', 'Resize', 'on');
+main_window = figure('Name', 'SimulatorOC', 'Units', 'Normalized', 'Position', [0, 0, 0.6, 0.9], 'Visible', 'off', 'MenuBar', 'none', 'Resize', 'on');
 datacursormode on;
 
 %%%%%GUI features (buttons etc.)%%%%%
@@ -360,7 +360,60 @@ n_clusters = 0;
                 count_x = 1;
                 count_y = 1;
                 trihex = 1;
-                
+                magnifier = 0.5;
+                for i = 1:n_nodes
+                    if(trihex == 1)
+                        nodes(i,1) = count_x * grid_sz;
+                        nodes(i,2) = count_y * grid_sz;
+                        count_x = count_x + 1;
+                        if(mod(count_x, gr) == 0) 
+                            trihex = 2;
+                            count_y = count_y + 1;
+                            count_x = 1;
+                            magnifier = 0.5;
+                        end             
+                    elseif(trihex == 2)
+                        if(count_x == 1)
+                            nodes(i,1) = count_x * grid_sz - grid_sz * magnifier;
+                           
+                        else
+                            nodes(i,1) = count_x * grid_sz + grid_sz * magnifier;
+                             magnifier = magnifier + 1;
+                        end  
+                        nodes(i,2) = count_y * grid_sz;
+                        count_x = count_x + 1;
+                        if(mod(count_x, gr - floor((gr/2 - 1))) == 0) 
+                            trihex = 3;
+                            count_y = count_y + 1;
+                            count_x = 1;                           
+                        end 
+                    elseif(trihex == 3)
+                        nodes(i,1) = count_x * grid_sz;
+                        nodes(i,2) = count_y * grid_sz;
+                        count_x = count_x + 1;
+                        if(mod(count_x, gr) == 0) 
+                            trihex = 4;
+                            count_y = count_y + 1;
+                            count_x = 1;
+                            magnifier = 0.5;
+                        end 
+                    elseif(trihex == 4)
+                        if(count_x == 1)
+                            nodes(i,1) = count_x * grid_sz + grid_sz * magnifier;
+                            magnifier = magnifier + 1;
+                        else
+                            nodes(i,1) = count_x * grid_sz + grid_sz * magnifier;
+                            magnifier = magnifier + 1;
+                        end
+                        nodes(i,2) = count_y * grid_sz;
+                        count_x = count_x + 1;
+                        if(mod(count_x, floor(gr/2) + 1) == 0) 
+                            trihex = 1;
+                            count_y = count_y + 1;
+                            count_x = 1;
+                        end 
+                    end
+                end
         end
    
         handler_base = plot(ax1, bs_x, bs_y, 'bs',...
