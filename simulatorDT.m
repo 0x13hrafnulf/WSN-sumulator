@@ -1,4 +1,4 @@
-function simulatorDT
+function simulatorDT %1
 clc
 clear all
 

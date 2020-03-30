@@ -1,4 +1,4 @@
-function simulatorMH
+function simulatorMH %2
 clc
 clear all
 
@@ -141,7 +141,7 @@ init_energy = str2double(get(energy_node_edit, 'String'));%2 or 0.5
 msg_body_size = 8 * str2double(get(msg_body_size_edit, 'String')); %lbody = 250 bytes, 2000 bits
 msg_header_size = 8 * str2double(get(msg_header_size_edit, 'String')); %lheader = 43 bytes, 344 bits
 
-nodes = zeros(n_nodes, 9); %x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label
+nodes = zeros(n_nodes, 10); %x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label
 for nd = 1:n_nodes
     
     nodes(nd,1) = rand(1,1)*area_x;	
@@ -494,7 +494,7 @@ handler_nodes = [];
         d0=sqrt(Efs/Emp);
         %5 - status, 6 - energy = 2j or 0.5j, 7 - energy_consumption
         msg = 10 * 8; % 5 || 8
-           
+        nodes(:,10) = 1;   
         Points = [nodes(:,1:2); bs_x, bs_y];
         
         Dist = pdist2(Points, Points);
@@ -548,10 +548,17 @@ handler_nodes = [];
             else
                 [path, d] = shortestpath(path_graph, i, n_nodes+1, 'Method', 'positive');
                 draw_path(path);
+                disp("Round: ");
+                disp(round);
+                disp("Path: ");
                 disp(path);
+                disp("ID: ");
+                disp(i);
                 msg_s = msg;
+                nodes(i, 10) = 0;
                 for j=1:size(path,2)-1
                     id = path(j);
+                    disp(msg_s);
                     Etx = 0;
                     Erx = 0;
                     Etotal = 0;
@@ -568,7 +575,9 @@ handler_nodes = [];
                         nodes(id, 6) = nodes(id, 6) - Etotal;
                         nodes(id, 7) = nodes(id, 7) + Etotal;
                         if(next_id ~= n_nodes+1) 
-                           msg_s = msg_s + msg;      
+                           msg_s = msg_s + msg * nodes(next_id, 10);
+                           nodes(next_id, 10) = 0;
+                           disp(msg_s);
                         end
                     else
                         if(d0 > Dist(id,next_id))
@@ -583,7 +592,9 @@ handler_nodes = [];
                         nodes(id, 6) = nodes(id, 6) - Etotal;
                         nodes(id, 7) = nodes(id, 7) + Etotal;
                         if(next_id ~= n_nodes+1)
-                           msg_s = msg_s + msg;       
+                           msg_s = msg_s + msg * nodes(next_id, 10);
+                           nodes(next_id, 10) = 0; 
+                           disp(msg_s);
                         end  
                     end
                 end                         

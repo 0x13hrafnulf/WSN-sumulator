@@ -67,7 +67,7 @@ algorithm_panel = uipanel('Parent', main_window, 'Units', 'Normalized', ...
         'Position', [0.25, 0.01, 0.5, 0.20], 'Title', 'Algorithm parameters:', 'Visible', 'on','FontWeight', 'bold' , 'FontSize' , 12);
 uicontrol('Parent', algorithm_panel, 'Style', 'text', 'String', '1. Clustering', 'Units', 'Normalized', ...
         'FontWeight', 'bold' ,'FontSize' , 10,'Position', [0.0, 0.9, 0.25, 0.1]);
-cluster_method_chosen = uicontrol('Parent', algorithm_panel, 'Style', 'popupmenu', 'String', { 'K-Means', 'DBSCAN', 'GMM-clusters', 'Hierarchical', 'K-Means-M'}, 'Units', 'Normalized', ...
+cluster_method_chosen = uicontrol('Parent', algorithm_panel, 'Style', 'popupmenu', 'String', { 'K-Means', 'DBSCAN', 'GMM-clusters', 'Hierarchical', 'Spectral'}, 'Units', 'Normalized', ...
         'FontWeight','bold','FontAngle','italic','FontSize' , 11,'Position', [0.0, 0.8, 0.3, 0.1], 'Callback', @method_chosen);
 
 uicontrol('Parent', algorithm_panel, 'Style', 'pushbutton', 'String', 'Run simulation', 'Units', 'Normalized', ...
@@ -180,7 +180,7 @@ init_energy = str2double(get(energy_node_edit, 'String'));%2 or 0.5
 msg_body_size = 8 * str2double(get(msg_body_size_edit, 'String')); %lbody = 250 bytes, 2000 bits
 msg_header_size = 8 * str2double(get(msg_header_size_edit, 'String')); %lheader = 43 bytes, 344 bits
 
-nodes = zeros(n_nodes, 9); %x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label
+nodes = zeros(n_nodes, 10); %x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label
 for nd = 1:n_nodes
     
     nodes(nd,1) = rand(1,1)*area_x;	
@@ -559,26 +559,42 @@ n_clusters = 0;
                     number_of_neighbours = str2double(number_of_neighbours);
                     eps = str2double(eps);
                     data_sz = size(nodes, 1);
-                    labels, centroids = get_dbscan_result(nodes, eps, number_of_neighbours, data_sz);
-                    nodes = [nodes, labels];
+                    [labels, centroids] = get_dbscan_result(nodes, eps, number_of_neighbours, data_sz, number_of_clusters1);
+                    nodes(:,9) = labels;%x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label  
+                    CHs = ones(number_of_clusters, 8);%id, number of nodes, counter, x, y, msg_size, status, send
+                    draw(centroids, number_of_clusters);
+                    init_cluster_ids(number_of_clusters);
+                    n_clusters = number_of_clusters; 
                     
                 end 
             case 'K-Means'    
                  [labels, centroids] = get_k_means_result(nodes, number_of_clusters);
                  nodes(:,9) = labels;%x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label  
-                 CHs = ones(number_of_clusters, 7);%id, number of nodes, counter, x, y, msg_size, status
+                 CHs = ones(number_of_clusters, 8);%id, number of nodes, counter, x, y, msg_size, status
                  draw(centroids, number_of_clusters);
                  init_cluster_ids(number_of_clusters);
                  n_clusters = number_of_clusters;
             case 'GMM-clusters'     
-                 labels, centroids = get_gmm_result(nodes, number_of_clusters);
-                 nodes = [nodes, labels];
+                 [labels, centroids] = get_gmm_result(nodes, number_of_clusters);
+                 nodes(:,9) = labels;%x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label  
+                 CHs = ones(number_of_clusters, 8);%id, number of nodes, counter, x, y, msg_size, status, send
+                 draw(centroids, number_of_clusters);
+                 init_cluster_ids(number_of_clusters);
+                 n_clusters = number_of_clusters;
             case 'Hierarchical'     
-                 labels, centroids = get_hierarchical_result(nodes, number_of_clusters);
-                 nodes = [nodes, labels];
-            case 'K-Means-M'
-                 labels, centroids = get_k_means_modernized_result(nodes, number_of_clusters);
-                 nodes = [nodes, labels]; 
+                 [labels, centroids] = get_hierarchical_result(nodes, number_of_clusters);
+                 nodes(:,9) = labels;%x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label  
+                 CHs = ones(number_of_clusters, 8);%id, number of nodes, counter, x, y, msg_size, status, send
+                 draw(centroids, number_of_clusters);
+                 init_cluster_ids(number_of_clusters);
+                 n_clusters = number_of_clusters;  
+            case 'Spectral'
+                 [labels, centroids] = get_spectral_result(nodes, number_of_clusters);
+                 nodes(:,9) = labels;%x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label  
+                 CHs = ones(number_of_clusters, 8);%id, number of nodes, counter, x, y, msg_size, status, send
+                 draw(centroids, number_of_clusters);
+                 init_cluster_ids(number_of_clusters);
+                 n_clusters = number_of_clusters; 
             end  
         end
     end
@@ -723,6 +739,7 @@ n_clusters = 0;
                         disp(path);
                         draw_path(n, path);
                         msg_s = CHs(i,6);
+                        CHs(i,6) = 0;
                         for j=1:size(path,2)-1
                             id = path(j);                        
                             Etx = 0;
@@ -743,7 +760,8 @@ n_clusters = 0;
                                 cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
                                 total_cluster_energy(i, round) = sum(cluster_energy_per_round(i,:));
                                 if(next_id ~= n+1) 
-                                   msg_s = msg_s + CHs(next_id, 6);      
+                                   msg_s = msg_s + CHs(next_id, 6); 
+                                    CHs(next_id, 6) = 0;
                                 end
                             else                         
                                 if(d0 > Dist1(id,next_id))
@@ -760,17 +778,74 @@ n_clusters = 0;
                                 cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
                                 total_cluster_energy(i, round) = sum(cluster_energy_per_round(i,:));
                                 if(next_id ~= n+1)
-                                   msg_s = msg_s + CHs(next_id, 6);      
+                                   msg_s = msg_s + CHs(next_id, 6);
+                                   CHs(next_id, 6) = 0;
                                 end                          
                             end
                         end
                     end    
                 end
-            case 'Bellman-Fords'    
+            case 'Bellman-Ford'    
                 for i=1:n
-                    [path, d] = shortestpath(cluster_graph, n+1, i, 'Method', 'mixed');
-                    disp(path);
-                    disp(d);
+                    if(CHs(i,7) == 0) 
+                        continue;
+                    else
+                        [path, d] = shortestpath(cluster_graph, n+1, i, 'Method', 'mixed');
+                        disp("Cluster:");
+                        disp(i);
+                        disp("Round: ");
+                        disp(round);
+                        disp("Path: ");
+                        path = fliplr(path);
+                        disp(path);
+                        draw_path(n, path);
+                        disp(CHs);
+                        msg_s = CHs(i,6);
+                        CHs(i,6) = 0;
+                        for j=1:size(path,2)-1
+                            id = path(j);                        
+                            Etx = 0;
+                            Erx = 0;
+                            Etotal = 0;
+                            next_id = path(j + 1);
+                            if(id == i)
+                                if(d0 > Dist(id,next_id))
+                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Efs*Dist(id,next_id)^2;     
+                                else 
+                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Emp*Dist(id,next_id)^4;   
+                                end
+                                Etotal = Etx;
+                                total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
+                                node_energy_per_round(CHs(id,1), round) = node_energy_per_round(CHs(id,1), round) + Etotal;
+                                nodes(CHs(id,1), 6) = nodes(CHs(id,1), 6) - Etotal;
+                                nodes(CHs(id,1), 7) = nodes(CHs(id,1), 7) + Etotal;
+                                cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
+                                total_cluster_energy(i, round) = sum(cluster_energy_per_round(i,:));
+                                if(next_id ~= n+1) 
+                                   msg_s = msg_s + CHs(next_id, 6);
+                                   CHs(next_id, 6) = 0;
+                                end
+                            else                         
+                                if(d0 > Dist(id,next_id))
+                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Efs*Dist(id, next_id)^2;
+                                else 
+                                    Etx = (msg_s + msg_header_size)*(Eelec) + (msg_s + msg_header_size)*Emp*Dist(id, next_id)^4;    
+                                end 
+                                Erx = (msg_s - CHs(id, 6) + msg_header_size)*(Eelec) + EDA * (msg_s + msg_header_size);
+                                Etotal = Etx+Erx;
+                                total_energy_per_round(round) = total_energy_per_round(round) + Etotal;
+                                node_energy_per_round(CHs(id,1), round) = node_energy_per_round(CHs(id,1), round) + Etotal;
+                                nodes(CHs(id,1), 6) = nodes(CHs(id,1), 6) - Etotal;
+                                nodes(CHs(id,1), 7) = nodes(CHs(id,1), 7) + Etotal;
+                                cluster_energy_per_round(id, round) = cluster_energy_per_round(id, round) + Etotal;
+                                total_cluster_energy(i, round) = sum(cluster_energy_per_round(i,:));
+                                if(next_id ~= n+1)
+                                   msg_s = msg_s + CHs(next_id, 6);
+                                   CHs(next_id, 6) = 0;
+                                end                          
+                            end
+                        end
+                    end    
                 end
         end
 end
@@ -781,7 +856,14 @@ end
             number_of_points = size(cluster,1);
             CHs(i,2) = number_of_points;    
             for j = 1:number_of_points
-               nodes(cluster(j,3),4) = j;         
+               d = ((cluster(j,1) - centroids(i,1))^2 + (cluster(j,2) - centroids(i,2))^2)^0.5;
+               nodes(cluster(j,3),10) = d;
+            end
+            cluster(:,10) = nodes(nodes(:,9) == i,10);
+            [dist, ind] = sort(cluster(:,10));
+
+            for j = 1:number_of_points
+                nodes(cluster(dist(j,1) == cluster(:,10),3),4) = j;
             end
         end 
     end
@@ -969,6 +1051,7 @@ end
         nodes(:,6) = init_energy;
         nodes(:,7) = 0;
         nodes(:,8) = 0;
+        nodes(:,10) = 0;
         CHs(:, 7) = 1;
         init_cluster_ids(n_clusters);
         total_energy = zeros(n_rounds,1);

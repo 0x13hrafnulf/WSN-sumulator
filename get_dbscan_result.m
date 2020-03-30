@@ -1,8 +1,24 @@
-function labels = get_dbscan_result(input_matrix, eps, n_neigh, data_sz)
+function [labels, centroids] = get_dbscan_result(input_matrix, eps, n_neigh, data_sz, q)
     
     tic
     labels = dbscan(input_matrix, eps, n_neigh);
     toc
+    
+    distances = zeros(q,1);
+    centroids = zeros(q,2);
+    for i = 1:q
+        centroids(i,1) = mean(input_matrix(labels == i,1)); 
+        centroids(i,2) = mean(input_matrix(labels == i,2)); 
+    end
+    disp(labels);
+    disp(centroids);
+    %%required for drawing circles in simulator
+    for i = 1:q
+        temp = pdist2(centroids(i,1:2), input_matrix(labels == i,1:2));
+        distances(i) = max(temp);
+    end
+    centroids = [centroids, distances];
+    
     function idx = dbscan(input_matrix, epsilon, MinPts)
 
         cluster_n = 0;
