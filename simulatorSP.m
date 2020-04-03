@@ -446,12 +446,12 @@ n_clusters = 0;
         [pathstr, filename_for_saving, ext] = fileparts(full_filename);
         
         tmp = load(full_filename);
-        disp(tmp);
+        %disp(tmp);
         n_nodes = size(tmp,1);
-        disp(n_nodes);
+        %disp(n_nodes);
         nodes = zeros(n_nodes, 9);
         nodes(:,1:2) = tmp(:,1:2);
-        disp(nodes);
+        %disp(nodes);
         switch ext
             case ".mat"
                 nodes = tmp.D; %specify matrix name that being loaded from file 
@@ -731,12 +731,12 @@ n_clusters = 0;
                         continue;
                     else
                         [path, d] = shortestpath(cluster_graph, i, n+1, 'Method', 'positive');
-                        disp("Cluster:");
-                        disp(i);
-                        disp("Round: ");
-                        disp(round);
-                        disp("Path: ");
-                        disp(path);
+                        %disp("Cluster:");
+                        %disp(i);
+                        %disp("Round: ");
+                        %disp(round);
+                        %disp("Path: ");
+                        %disp(path);
                         draw_path(n, path);
                         msg_s = CHs(i,6);
                         CHs(i,6) = 0;
@@ -791,15 +791,15 @@ n_clusters = 0;
                         continue;
                     else
                         [path, d] = shortestpath(cluster_graph, n+1, i, 'Method', 'mixed');
-                        disp("Cluster:");
-                        disp(i);
-                        disp("Round: ");
-                        disp(round);
-                        disp("Path: ");
+                        %disp("Cluster:");
+                        %disp(i);
+                        %disp("Round: ");
+                        %disp(round);
+                        %disp("Path: ");
                         path = fliplr(path);
-                        disp(path);
+                        %disp(path);
                         draw_path(n, path);
-                        disp(CHs);
+                        %disp(CHs);
                         msg_s = CHs(i,6);
                         CHs(i,6) = 0;
                         for j=1:size(path,2)-1
@@ -910,7 +910,7 @@ end
         hold(ax1, 'on');   
             handler_CHs = [handler_CHs, plot(ax1, nodes(nodes(:,5) == 0, 1), nodes(nodes(:,5) == 0 , 2), 'kx', 'LineWidth', 2, 'MarkerSize',12, 'MarkerEdgeColor','k','MarkerFaceColor', 'k')];
         hold(ax1, 'off');
-        disp(CHs);
+        %disp(CHs);
     end
 
     function simulate(src, event)
@@ -934,6 +934,7 @@ end
         n_rounds = str2double(get(num_of_rounds_edit, 'String'));      
         reset_stats();
         network_alive = 1;
+        count = 0;
         for round=1:n_rounds
             if(network_alive == 1)
                 num_of_rounds_edit.String =  num2str(n_rounds - round);
@@ -946,24 +947,36 @@ end
                 draw_lines(n_clusters);
                 calculate_energy(n_clusters, round);
                 total_energy(round) = sum(total_energy_per_round); 
-                total_enerdy_edit.String = num2str(sum(total_energy));
+                total_enerdy_edit.String = num2str(sum(total_energy_per_round));
                 check_node_status(n_clusters);
-                %disp(total_energy_per_round);
-                %disp(node_energy_per_round);
-                %disp(total_energy);
-                %disp(cluster_energy_per_round);
-                %disp(total_cluster_energy);
+                %%disp(total_energy_per_round);
+                %%disp(node_energy_per_round);
+                %%disp(total_energy);
+                %%disp(cluster_energy_per_round);
+                %%disp(total_cluster_energy);
                 nodes_alive_edit.String = num2str(size(nodes(nodes(:,5) == 1,1),1));
                 nodes_dead_edit.String = num2str(size(nodes(nodes(:,5) == 0,1), 1));
                 if(sum(CHs(:,7)) == 0)
                     network_alive = 0;
                 end
-                pause(2);
+                if(sum(nodes(:,5)) == 0)
+                    disp("ROUND: ");
+                    disp(round);
+                    network_alive = 0;
+                    pause(0.00001);
+                end
+                if(sum(nodes(:,5)) < n_nodes && count == 0)
+                    disp("ROUND: ");
+                    disp(round);
+                    pause(0.00001);
+                    count = 1;
+                end
+                pause(1);
             else
                 break;
             end;
         end
-        %disp(total_energy_per_round);
+        %%disp(total_energy_per_round);
     end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%DRAWING%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

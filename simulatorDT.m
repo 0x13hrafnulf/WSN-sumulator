@@ -551,6 +551,7 @@ handler_nodes = [];
         n_rounds = str2double(get(num_of_rounds_edit, 'String'));      
         reset_stats();
         network_alive = 1;
+        count = 0;
         for round=1:n_rounds
             if(network_alive == 1)
                 num_of_rounds_edit.String =  num2str(n_rounds - round);
@@ -559,17 +560,26 @@ handler_nodes = [];
                 calculate_energy(round);
                 draw_lines();
                 check_node_status();
-                total_energy(round) = sum(total_energy_per_round); 
-                total_enerdy_edit.String = num2str(sum(total_energy));
-                %disp(total_energy_per_round);
+                %total_energy(round) = sum(total_energy_per_round); 
+                total_enerdy_edit.String = num2str(sum(total_energy_per_round));
+                %disp(num2str(total_energy_per_round));
                 %disp(node_energy_per_round);
-                %disp(total_energy);
+                %disp(sum(total_energy_per_round));
                 nodes_alive_edit.String = num2str(size(nodes(nodes(:,5) == 1,1),1));
                 nodes_dead_edit.String = num2str(size(nodes(nodes(:,5) == 0,1), 1));
                 if(sum(nodes(:,5)) == 0)
+                    disp("ROUND: ");
+                    disp(round);
                     network_alive = 0;
+                    pause(0.00001);
                 end
-                pause(2);
+                if(sum(nodes(:,5)) < n_nodes && count == 0)
+                    disp("ROUND: ");
+                    disp(round);
+                    pause(0.00001);
+                    count = 1;
+                end
+                %pause(0.00001);
             else
                 break;
             end;
@@ -592,6 +602,7 @@ handler_nodes = [];
    
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%STATISTICS%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
      function reset_stats(src, event)
+        %delete(handler_nodes);
         init_energy = str2double(get(energy_node_edit, 'String'));%2 or 0.5
         nodes(:,5) = 1;
         nodes(:,6) = init_energy;

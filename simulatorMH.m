@@ -547,18 +547,18 @@ handler_nodes = [];
                 continue;
             else
                 [path, d] = shortestpath(path_graph, i, n_nodes+1, 'Method', 'positive');
-                draw_path(path);
-                disp("Round: ");
-                disp(round);
-                disp("Path: ");
-                disp(path);
-                disp("ID: ");
-                disp(i);
+                %draw_path(path);
+                %disp("Round: ");
+                %disp(round);
+                %disp("Path: ");
+                %disp(path);
+                %disp("ID: ");
+                %disp(i);
                 msg_s = msg;
                 nodes(i, 10) = 0;
                 for j=1:size(path,2)-1
                     id = path(j);
-                    disp(msg_s);
+                    %disp(msg_s);
                     Etx = 0;
                     Erx = 0;
                     Etotal = 0;
@@ -577,7 +577,7 @@ handler_nodes = [];
                         if(next_id ~= n_nodes+1) 
                            msg_s = msg_s + msg * nodes(next_id, 10);
                            nodes(next_id, 10) = 0;
-                           disp(msg_s);
+                           %disp(msg_s);
                         end
                     else
                         if(d0 > Dist(id,next_id))
@@ -594,7 +594,7 @@ handler_nodes = [];
                         if(next_id ~= n_nodes+1)
                            msg_s = msg_s + msg * nodes(next_id, 10);
                            nodes(next_id, 10) = 0; 
-                           disp(msg_s);
+                           %disp(msg_s);
                         end  
                     end
                 end                         
@@ -631,6 +631,7 @@ handler_nodes = [];
         n_rounds = str2double(get(num_of_rounds_edit, 'String'));      
         reset_stats();
         network_alive = 1;
+        count = 0;
         for round=1:n_rounds
             if(network_alive == 1)
                 num_of_rounds_edit.String =  num2str(n_rounds - round);
@@ -639,16 +640,25 @@ handler_nodes = [];
                 calculate_energy(round);
                 check_node_status();
                 total_energy(round) = sum(total_energy_per_round); 
-                total_enerdy_edit.String = num2str(sum(total_energy));
+                total_enerdy_edit.String = num2str(sum(total_energy_per_round));
                 %disp(total_energy_per_round);
                 %disp(node_energy_per_round);
                 %disp(total_energy);
                 nodes_alive_edit.String = num2str(size(nodes(nodes(:,5) == 1,1),1));
                 nodes_dead_edit.String = num2str(size(nodes(nodes(:,5) == 0,1), 1));
                 if(sum(nodes(:,5)) == 0)
+                    disp("ROUND: ");
+                    disp(round);
                     network_alive = 0;
+                    pause(0.00001);
                 end
-                pause(2);
+                if(sum(nodes(:,5)) < n_nodes && count == 0)
+                    disp("ROUND: ");
+                    disp(round);
+                    pause(0.00001);
+                    count = 1;
+                end
+                %pause(1);
             else
                 break;
             end;
