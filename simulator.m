@@ -733,7 +733,7 @@ n_clusters = 0;
                         %disp(round);
                         %disp("Path: ");
                         %disp(path);         
-                        draw_path(n, path);
+                        %draw_path(n, path);
                         %disp(CHs);
                         msg_s = CHs(i,6);
                         CHs(i,6) = 0;
@@ -795,7 +795,7 @@ n_clusters = 0;
                         %disp("Path: ");
                         path = fliplr(path);
                         %disp(path);
-                        draw_path(n, path);
+                        %draw_path(n, path);
                         %disp(CHs);
                         msg_s = CHs(i,6);
                         CHs(i,6) = 0;
@@ -953,9 +953,9 @@ end
                 delete(handler_nodes);
                 init_CHs(n_clusters);    
                 %draw_cluster_lines(number_of_clusters);
-                draw_lines(n_clusters);
+                %draw_lines(n_clusters);
                 calculate_energy(n_clusters, round);
-                total_energy(round) = sum(total_energy_per_round); 
+                %total_energy(round) = sum(total_energy_per_round); 
                 total_enerdy_edit.String = num2str(sum(total_energy_per_round));
                 check_node_status(n_clusters);
                 %%disp(total_energy_per_round);
@@ -980,7 +980,7 @@ end
                     pause(0.00001);
                     count = 1;
                 end
-                pause(1);
+                %pause(1);
             else
                 break;
             end;
@@ -1075,6 +1075,7 @@ end
         nodes(:,7) = 0;
         nodes(:,8) = 0;
         nodes(:,10) = 0;
+        CHs = ones(n_clusters, 8);
         CHs(:, 7) = 1;
         init_cluster_ids(n_clusters);
         total_energy = zeros(n_rounds,1);

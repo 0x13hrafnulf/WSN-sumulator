@@ -569,7 +569,7 @@ n_clusters = 0;
             case 'K-Means'    
                  [labels, centroids] = get_k_means_result(nodes, number_of_clusters);
                  nodes(:,9) = labels;%x, y, id, cluster-id, status, energy = 2j or 0.5j, energy_consumption,role (1 = ch, 0 = simple node), label  
-                 CHs = ones(number_of_clusters, 7);%id, number of nodes, counter, x, y, msg_size, status
+                 CHs = ones(number_of_clusters, 8);%id, number of nodes, counter, x, y, msg_size, status
                  draw(centroids, number_of_clusters);
                  init_cluster_ids(number_of_clusters);
                  n_clusters = number_of_clusters;
@@ -919,15 +919,15 @@ n_clusters = 0;
         for round=1:n_rounds
             if(network_alive == 1)
                 num_of_rounds_edit.String =  num2str(n_rounds - round);
-                delete(handler_CHs);
-                delete(handler_CH_lines);
+                %delete(handler_CHs);
+               % delete(handler_CH_lines);
                 delete(handler_lines);
-                delete(handler_text);   
+                 delete(handler_text);   
                 init_CHs(n_clusters);    
                 %draw_cluster_lines(number_of_clusters);
-                draw_lines(n_clusters);
+                %draw_lines(n_clusters);
                 calculate_energy(n_clusters, round);
-                total_energy(round) = sum(total_energy_per_round); 
+                %total_energy(round) = sum(total_energy_per_round); 
                 total_enerdy_edit.String = num2str(sum(total_energy_per_round));
                 check_node_status(n_clusters);
                 %%disp(total_energy_per_round);
@@ -952,7 +952,7 @@ n_clusters = 0;
                     pause(0.00001);
                     count = 1;
                 end
-                pause(1);
+                %pause(1);
             else
                 break;
             end;
@@ -1045,6 +1045,7 @@ n_clusters = 0;
         nodes(:,6) = init_energy;
         nodes(:,7) = 0;
         nodes(:,8) = 0;
+        CHs = ones(n_clusters, 8);
         CHs(:, 7) = 1;
         init_cluster_ids(n_clusters);
         total_energy = zeros(n_rounds,1);
